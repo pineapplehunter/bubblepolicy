@@ -28,9 +28,9 @@ enum Commands {
         /// Generate policy without TUI
         #[arg(short, long)]
         generate_policy: bool,
-        /// Output file (default: stdout)
-        #[arg(short, long)]
-        output: Option<String>,
+        /// Output file (required)
+        #[arg(short, long, required = true)]
+        output: String,
     },
     /// Create a bubblewrap wrapper from a policy file
     Create {

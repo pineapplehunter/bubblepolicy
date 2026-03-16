@@ -5,9 +5,9 @@ A Rust CLI tool for configuring bubblewrap sandboxes with SELinux-style workflow
 ## Project Overview
 
 - `src/main.rs` - CLI entry point with clap
-- `src/trace.rs` - Trace subcommand (strace wrapper)
-- `src/review.rs` - Review subcommand (TUI file tree toggler)
-- `src/create.rs` - Create subcommand (wrapper generator)
+- `src/trace.rs` - Trace subcommand (strace wrapper) with optional output file
+- `src/review.rs` - Review subcommand (TUI file tree toggler) with optional output file
+- `src/create.rs` - Create subcommand (wrapper generator) with directory optimization
 - `Cargo.toml` - Rust dependencies
 
 ## Build/Lint/Test Commands
@@ -110,6 +110,35 @@ cargo add <package> --vers 1.0  # Add specific version
 4. Build release with `cargo build --release`
 5. Use `color_eyre::eyre::{bail, WrapErr}` for error handling
 
+### Testing
+
+Use the convenience test script to verify functionality:
+
+```bash
+# Run all tests
+bash test_myjail.sh test
+
+# Run specific tests
+bash test_myjail.sh trace
+bash test_myjail.sh review
+bash test_myjail.sh create
+bash test_myjail.sh grouping
+bash test_myjail.sh merge
+
+# Build and test everything
+bash test_myjail.sh all
+
+# Clean test files
+bash test_myjail.sh clean
+```
+
+The test script covers:
+- Trace command functionality
+- Review command with policy generation
+- Create command with wrapper generation
+- Directory grouping optimization
+- Multi-file merge in review
+
 ## Notes for Agents
 
 - This is a bubblewrap policy tool with 3 subcommands: `trace`, `review`, `create`
@@ -117,3 +146,5 @@ cargo add <package> --vers 1.0  # Add specific version
 - Requires `strace` system package for trace command
 - Output: shell scripts or binary wrappers for bubblewrap
 - SELinux-style workflow: audit → review → enforce
+- All subcommands support `--output` flag for file output (default: stdout)
+- `create` subcommand automatically optimizes directory binds by grouping common parents

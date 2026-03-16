@@ -81,11 +81,14 @@ fn generate_wrapper(policy: &Policy, binary: &str) -> Result<String> {
 
     // Find common ancestors for directories with multiple children
     let mut dir_parents: BTreeMap<PathBuf, Vec<PathBuf>> = BTreeMap::new();
-    
-    for (dir, _paths) in &dir_to_paths {
+
+    for dir in dir_to_paths.keys() {
         if let Some(parent) = dir.parent() {
             if !parent.as_os_str().is_empty() {
-                dir_parents.entry(parent.to_path_buf()).or_default().push(dir.clone());
+                dir_parents
+                    .entry(parent.to_path_buf())
+                    .or_default()
+                    .push(dir.clone());
             }
         }
     }
