@@ -120,7 +120,6 @@ myjail create --policy mypolicy.json /bin/program --output wrapper.sh
 ## Requirements
 
 - Linux with bubblewrap installed (`bwrap`)
-- `strace` for the trace command
 
 ## License
 

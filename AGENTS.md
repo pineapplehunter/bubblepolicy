@@ -143,8 +143,11 @@ The test script covers:
 
 - This is a bubblewrap policy tool with 3 subcommands: `trace`, `review`, `create`
 - Uses `ratatui` for TUI (review command), `clap` for CLI parsing, `color_eyre` for errors
-- Requires `strace` system package for trace command
+- Uses raw `ptrace` via `nix` crate for trace command (not external strace)
+- Uses `syscall_numbers` crate for syscall constants
 - Output: shell scripts or binary wrappers for bubblewrap
 - SELinux-style workflow: audit → review → enforce
 - All subcommands support `--output` flag for file output (default: stdout)
-- `create` subcommand automatically optimizes directory binds by grouping common parents
+- `create` subcommand automatically optimizes directory binds by collapsing paths with identical access
+- Policy entries use `Access` enum: `Deny`, `ReadOnly`, `ReadWrite`, `Tmpfs`
+- Test data files in `test_data/` directory for manual testing

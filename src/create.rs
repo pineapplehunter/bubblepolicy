@@ -3,16 +3,35 @@ use color_eyre::{
     Result,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashSet};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum Access {
+    Deny,
+    ReadOnly,
+    ReadWrite,
+    Tmpfs,
+}
+
+impl Access {
+    pub fn is_allowed(&self) -> bool {
+        !matches!(self, Access::Deny)
+    }
+
+    pub fn is_tmpfs(&self) -> bool {
+        matches!(self, Access::Tmpfs)
+    }
+
+    pub fn is_write(&self) -> bool {
+        matches!(self, Access::ReadWrite | Access::Tmpfs)
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolicyEntry {
     pub path: String,
-    pub allowed: bool,
-    pub read: bool,
-    pub write: bool,
+    pub access: Access,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -47,133 +66,189 @@ pub fn run(policy: Option<&str>, output: Option<&str>, binary: Option<&str>) -> 
     Ok(())
 }
 
-fn generate_wrapper(policy: &Policy, binary: &str) -> Result<String> {
-    // Collect allowed paths and separate by write permission
-    let mut all_paths: Vec<PathBuf> = Vec::new();
-    let mut write_paths: HashSet<PathBuf> = HashSet::new();
+fn dedup_entries(entries: &[PolicyEntry]) -> Vec<PolicyEntry> {
+    use std::collections::HashMap;
 
-    for entry in &policy.entries {
-        if !entry.allowed {
+    #[derive(Clone)]
+    struct TreeNode {
+        path: String,
+        access: Option<Access>,
+        is_leaf: bool,
+        children: HashMap<String, TreeNode>,
+    }
+
+    let mut root = TreeNode {
+        path: "/".to_string(),
+        access: None,
+        is_leaf: false,
+        children: HashMap::new(),
+    };
+    let mut root_was_in_input = false;
+
+    for entry in entries {
+        // Track if root was in input
+        if entry.path == "/" {
+            root_was_in_input = true;
+        }
+
+        if !entry.access.is_allowed() {
             continue;
         }
 
-        let path = PathBuf::from(&entry.path);
-        all_paths.push(path.clone());
+        let path = &entry.path;
 
-        if entry.write {
-            write_paths.insert(path);
+        // Handle root specially
+        if path == "/" {
+            root.access = Some(entry.access.clone());
+            continue;
+        }
+
+        let parts: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+        let mut current = &mut root;
+
+        for (i, part) in parts.iter().enumerate() {
+            let is_last = i == parts.len() - 1;
+            let child_path = if current.path == "/" {
+                format!("/{}", part)
+            } else {
+                format!("{}/{}", current.path, part)
+            };
+
+            if !current.children.contains_key(*part) {
+                current.children.insert(
+                    part.to_string(),
+                    TreeNode {
+                        path: child_path,
+                        access: None,
+                        is_leaf: is_last,
+                        children: HashMap::new(),
+                    },
+                );
+            }
+
+            let child = current.children.get_mut(*part).unwrap();
+
+            if is_last {
+                child.access = Some(entry.access.clone());
+                child.is_leaf = true;
+            }
+
+            current = child;
         }
     }
 
-    // Sort and dedup
-    all_paths.sort();
-    all_paths.dedup();
-
-    // Build a map of directory -> list of paths in that directory
-    let mut dir_to_paths: BTreeMap<PathBuf, Vec<PathBuf>> = BTreeMap::new();
-
-    for path in &all_paths {
-        if let Some(parent) = path.parent() {
-            let parent_entry = dir_to_paths.entry(parent.to_path_buf()).or_default();
-            parent_entry.push(path.clone());
+    fn get_effective_access(node: &TreeNode) -> Option<Access> {
+        if let Some(access) = &node.access {
+            return Some(access.clone());
         }
-    }
 
-    // Find common ancestors for directories with multiple children
-    let mut dir_parents: BTreeMap<PathBuf, Vec<PathBuf>> = BTreeMap::new();
+        if node.children.is_empty() {
+            return None;
+        }
 
-    for dir in dir_to_paths.keys() {
-        if let Some(parent) = dir.parent() {
-            if !parent.as_os_str().is_empty() {
-                dir_parents
-                    .entry(parent.to_path_buf())
-                    .or_default()
-                    .push(dir.clone());
+        let mut child_accesses: Vec<Access> = Vec::new();
+        for child in node.children.values() {
+            if let Some(access) = get_effective_access(child) {
+                child_accesses.push(access);
             }
         }
+
+        if child_accesses.is_empty() {
+            None
+        } else if child_accesses.iter().all(|a| *a == child_accesses[0]) {
+            // ALL children have same access - can collapse
+            Some(child_accesses[0].clone())
+        } else {
+            // Children have different access - don't collapse
+            None
+        }
     }
 
-    // Decide what to bind
+    fn collect_deduped(
+        node: &TreeNode,
+        ancestor_access: Option<&Access>,
+        result: &mut Vec<PolicyEntry>,
+    ) {
+        // Get effective access for this node
+        let effective = get_effective_access(node);
+
+        // Determine what children will inherit
+        let child_ancestor = if let Some(access) = &effective {
+            // Decide whether to emit this node
+            // We emit if:
+            // 1. Root has explicit access, OR
+            // 2. Node has explicit access and differs from ancestor, OR
+            // 3. Node has NO explicit but has computed access (all children same)
+            //    AND differs from ancestor (or no ancestor)
+            let should_emit = if node.path == "/" {
+                node.access.is_some()
+            } else if node.access.is_some() {
+                // Has explicit access - emit if different from ancestor
+                ancestor_access.map_or(true, |a| *a != *access)
+            } else {
+                // No explicit - has computed access (all children same)
+                // Emit if different from ancestor (or no ancestor - this becomes the root)
+                ancestor_access.map_or(true, |a| *a != *access)
+            };
+
+            if should_emit {
+                result.push(PolicyEntry {
+                    path: node.path.clone(),
+                    access: access.clone(),
+                });
+                // Children inherit from this node
+                Some(access)
+            } else {
+                // Children inherit from ancestor
+                ancestor_access
+            }
+        } else {
+            // No effective access at all
+            ancestor_access
+        };
+
+        // Process children
+        for child in node.children.values() {
+            collect_deduped(child, child_ancestor, result);
+        }
+    }
+
+    let mut result = Vec::new();
+    collect_deduped(&root, None, &mut result);
+
+    result.sort_by(|a, b| a.path.cmp(&b.path));
+
+    result
+}
+
+fn generate_wrapper(policy: &Policy, binary: &str) -> Result<String> {
+    // Deduplicate entries - remove children that have same access as parent
+    let entries = dedup_entries(&policy.entries);
+    eprintln!("Deduplicated entries: {}", entries.len());
+
+    // Just use the deduped entries directly
     let mut ro_binds = Vec::new();
     let mut rw_binds = Vec::new();
-    let mut covered: HashSet<PathBuf> = HashSet::new();
+    let mut tmpfs_mounts = Vec::new();
 
-    // First: bind common ancestors if they have multiple child directories
-    for (ancestor, children) in &dir_parents {
-        if children.len() > 1 {
-            // This ancestor has multiple subdirectories with files
-            // Check if any of those files have write permission
-            let mut has_write = false;
-            for child_dir in children {
-                if let Some(files) = dir_to_paths.get(child_dir) {
-                    for file in files {
-                        if write_paths.contains(file) {
-                            has_write = true;
-                            break;
-                        }
-                    }
-                }
-                if has_write {
-                    break;
-                }
-            }
-
-            let ancestor_str = ancestor.display().to_string();
-            if has_write {
-                rw_binds.push(ancestor_str);
-            } else {
-                ro_binds.push(ancestor_str);
-            }
-
-            // Mark all files under these directories as covered
-            for child_dir in children {
-                if let Some(files) = dir_to_paths.get(child_dir) {
-                    for file in files {
-                        covered.insert(file.clone());
-                    }
-                }
-            }
-        }
-    }
-
-    // Second: bind individual directories with multiple files
-    for (dir, files) in &dir_to_paths {
-        // Skip if already covered
-        if files.iter().all(|f| covered.contains(f)) {
+    for entry in &entries {
+        if !entry.access.is_allowed() {
             continue;
         }
 
-        let dir_str = dir.display().to_string();
-        let has_write = files.iter().any(|f| write_paths.contains(f));
-
-        if has_write {
-            rw_binds.push(dir_str);
+        if entry.access.is_tmpfs() {
+            tmpfs_mounts.push(entry.path.clone());
+        } else if entry.access.is_write() {
+            rw_binds.push(entry.path.clone());
         } else {
-            ro_binds.push(dir_str);
-        }
-
-        for file in files {
-            covered.insert(file.clone());
+            ro_binds.push(entry.path.clone());
         }
     }
 
-    // Third: add remaining individual files not covered
-    for path in &all_paths {
-        if !covered.contains(path) {
-            let path_str = path.display().to_string();
-            if write_paths.contains(path) {
-                rw_binds.push(path_str);
-            } else {
-                ro_binds.push(path_str);
-            }
-        }
-    }
-
-    // Remove duplicates and sort
+    // Sort
     ro_binds.sort();
-    ro_binds.dedup();
     rw_binds.sort();
-    rw_binds.dedup();
+    tmpfs_mounts.sort();
 
     // Build bwrap arguments
     let mut bwrap_args = Vec::new();
@@ -186,6 +261,11 @@ fn generate_wrapper(policy: &Policy, binary: &str) -> Result<String> {
     // Add read-write binds
     for path in rw_binds {
         bwrap_args.push(format!("    --bind {} {} \\", path, path));
+    }
+
+    // Add tmpfs mounts
+    for path in tmpfs_mounts {
+        bwrap_args.push(format!("    --tmpfs {} \\", path));
     }
 
     // Add standard system mounts
@@ -232,4 +312,158 @@ exec bwrap \
     );
 
     Ok(script)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Rule 1: All children have same access -> collapse to parent
+    // /:ro, /aaa:ro, /aaa/bbb:ro, /aaa/ccc:ro -> /:ro
+    #[test]
+    fn test_collapse_rule_1() {
+        let entries = vec![
+            PolicyEntry {
+                path: "/".to_string(),
+                access: Access::ReadOnly,
+            },
+            PolicyEntry {
+                path: "/aaa".to_string(),
+                access: Access::ReadOnly,
+            },
+            PolicyEntry {
+                path: "/aaa/bbb".to_string(),
+                access: Access::ReadOnly,
+            },
+            PolicyEntry {
+                path: "/aaa/ccc".to_string(),
+                access: Access::ReadOnly,
+            },
+        ];
+
+        let result = dedup_entries(&entries);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].path, "/");
+        assert_eq!(result[0].access, Access::ReadOnly);
+    }
+
+    // Rule 2: Children have different access -> keep differing ones
+    // /:ro, /aaa:ro, /aaa/bbb:ro, /aaa/ccc:rw -> /:ro, /aaa/ccc:rw
+    #[test]
+    fn test_collapse_rule_2() {
+        let entries = vec![
+            PolicyEntry {
+                path: "/".to_string(),
+                access: Access::ReadOnly,
+            },
+            PolicyEntry {
+                path: "/aaa".to_string(),
+                access: Access::ReadOnly,
+            },
+            PolicyEntry {
+                path: "/aaa/bbb".to_string(),
+                access: Access::ReadOnly,
+            },
+            PolicyEntry {
+                path: "/aaa/ccc".to_string(),
+                access: Access::ReadWrite,
+            },
+        ];
+
+        let result = dedup_entries(&entries);
+
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].path, "/");
+        assert_eq!(result[0].access, Access::ReadOnly);
+        assert_eq!(result[1].path, "/aaa/ccc");
+        assert_eq!(result[1].access, Access::ReadWrite);
+    }
+
+    // Rule 3: Deny at root, children have different access
+    // /:deny, /aaa:ro, /aaa/bbb:tmp, /aaa/ccc/ddd:rw -> /aaa:ro, /aaa/bbb:tmp, /aaa/ccc/ddd:rw
+    #[test]
+    fn test_collapse_rule_3() {
+        let entries = vec![
+            PolicyEntry {
+                path: "/".to_string(),
+                access: Access::Deny,
+            },
+            PolicyEntry {
+                path: "/aaa".to_string(),
+                access: Access::ReadOnly,
+            },
+            PolicyEntry {
+                path: "/aaa/bbb".to_string(),
+                access: Access::Tmpfs,
+            },
+            PolicyEntry {
+                path: "/aaa/ccc/ddd".to_string(),
+                access: Access::ReadWrite,
+            },
+        ];
+
+        let result = dedup_entries(&entries);
+
+        // Only allowed entries should appear (Deny entries are skipped)
+        eprintln!("Rule 3 result: {:?}", result);
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0].path, "/aaa");
+        assert_eq!(result[0].access, Access::ReadOnly);
+        assert_eq!(result[1].path, "/aaa/bbb");
+        assert_eq!(result[1].access, Access::Tmpfs);
+        assert_eq!(result[2].path, "/aaa/ccc/ddd");
+        assert_eq!(result[2].access, Access::ReadWrite);
+    }
+
+    // Additional test: siblings with same access collapse
+    #[test]
+    fn test_siblings_collapse() {
+        let entries = vec![
+            PolicyEntry {
+                path: "/a/1".to_string(),
+                access: Access::ReadOnly,
+            },
+            PolicyEntry {
+                path: "/a/2".to_string(),
+                access: Access::ReadOnly,
+            },
+            PolicyEntry {
+                path: "/a/3".to_string(),
+                access: Access::ReadOnly,
+            },
+        ];
+
+        let result = dedup_entries(&entries);
+
+        // All siblings have same access - collapse to parent
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].path, "/a");
+        assert_eq!(result[0].access, Access::ReadOnly);
+    }
+
+    // Additional test: mixed access among siblings
+    #[test]
+    fn test_siblings_mixed_access() {
+        let entries = vec![
+            PolicyEntry {
+                path: "/a/1".to_string(),
+                access: Access::ReadOnly,
+            },
+            PolicyEntry {
+                path: "/a/2".to_string(),
+                access: Access::ReadOnly,
+            },
+            PolicyEntry {
+                path: "/a/3".to_string(),
+                access: Access::ReadWrite,
+            },
+        ];
+
+        let result = dedup_entries(&entries);
+
+        // /a/1 and /a/2 collapse to /a with ReadOnly
+        // /a/3 stays as /a/3 with ReadWrite
+        assert_eq!(result.len(), 2);
+    }
 }

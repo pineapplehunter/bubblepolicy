@@ -1,11 +1,14 @@
-use color_eyre::{
-    eyre::{bail, WrapErr},
-    Result,
-};
+use color_eyre::{eyre::bail, Result};
+use nix::sys::ptrace;
+use nix::sys::signal::Signal;
+use nix::sys::wait::{waitpid, WaitStatus};
+use nix::unistd::{fork, ForkResult, Pid};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::ffi::c_void;
 use std::fs;
-use std::process::{Command, Stdio};
+use std::os::unix::process::CommandExt;
+use syscall_numbers::native as sysnum;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FileAccess {
@@ -30,31 +33,16 @@ pub fn run(cmd: &[String], output: Option<&str>) -> Result<()> {
 
     eprintln!("Tracing: {} {:?}", binary, args);
 
-    // Run strace and capture output
-    let strace_output = Command::new("strace")
-        .args(["-f", "-e", "trace=openat,open,read,write"])
-        .arg(binary)
-        .args(args)
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .output()
-        .context("Failed to run strace. Is strace installed?")?;
+    let file_accesses = trace_command(binary, args)?;
 
-    let strace_output_str = String::from_utf8_lossy(&strace_output.stderr);
-
-    // Parse strace output
-    let file_accesses = parse_strace_output(&strace_output_str)?;
-
-    // Deduplicate and output JSON
     let trace_output = TraceOutput {
         files: file_accesses,
     };
 
-    let json =
-        serde_json::to_string_pretty(&trace_output).context("Failed to serialize to JSON")?;
+    let json = serde_json::to_string_pretty(&trace_output)?;
 
     if let Some(output_path) = output {
-        fs::write(output_path, &json).context("Failed to write output file")?;
+        fs::write(output_path, &json)?;
         eprintln!("Trace written to: {}", output_path);
     } else {
         println!("{}", json);
@@ -63,116 +51,175 @@ pub fn run(cmd: &[String], output: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-fn parse_strace_output(output: &str) -> Result<Vec<FileAccess>> {
+fn trace_command(binary: &str, args: &[String]) -> Result<Vec<FileAccess>> {
     let mut file_map: BTreeMap<String, FileAccess> = BTreeMap::new();
 
-    for line in output.lines() {
-        // Parse openat syscalls: openat(AT_FDCWD, "/path/to/file", ...)
-        if let Some(path) = extract_path_from_openat(line) {
-            update_file_access(&mut file_map, path, line);
-        }
+    let pid = unsafe { fork() }?;
 
-        // Parse open syscalls: open("/path/to/file", ...)
-        if line.contains("open(") && !line.contains("openat") {
-            if let Some(path) = extract_path_from_open(line) {
-                update_file_access(&mut file_map, path, line);
-            }
+    match pid {
+        ForkResult::Parent { child } => {
+            trace_child(child, &mut file_map)?;
+        }
+        ForkResult::Child => {
+            ptrace::traceme()?;
+            let _ = std::process::Command::new(binary).args(args).exec();
         }
     }
 
-    // Sort and return
     let mut files: Vec<FileAccess> = file_map.into_values().collect();
     files.sort();
 
     Ok(files)
 }
 
-fn update_file_access(
-    file_map: &mut BTreeMap<String, FileAccess>,
-    path: String,
-    strace_line: &str,
-) {
-    let entry = file_map.entry(path.clone()).or_insert(FileAccess {
-        path,
+fn trace_child(child: Pid, file_map: &mut BTreeMap<String, FileAccess>) -> Result<()> {
+    // Wait for initial stop
+    match waitpid(child, None)? {
+        WaitStatus::Stopped(_, Signal::SIGSTOP) => {}
+        WaitStatus::Exited(_, _) | WaitStatus::Signaled(_, _, _) => return Ok(()),
+        _ => {}
+    }
+
+    // Set options to trace fork/vfork/clone/exec
+    ptrace::setoptions(
+        child,
+        nix::sys::ptrace::Options::PTRACE_O_TRACEFORK
+            | nix::sys::ptrace::Options::PTRACE_O_TRACEVFORK
+            | nix::sys::ptrace::Options::PTRACE_O_TRACECLONE
+            | nix::sys::ptrace::Options::PTRACE_O_TRACEEXEC,
+    )?;
+
+    // Continue the child
+    ptrace::syscall(child, None)?;
+
+    // Main trace loop
+    loop {
+        let status = waitpid(child, None)?;
+
+        match status {
+            WaitStatus::Stopped(_, Signal::SIGTRAP) => {
+                // Syscall entry or exit - check registers
+                if let Ok(regs) = ptrace::getregs(child) {
+                    let syscall_num = regs.orig_rax as i64;
+
+                    match syscall_num {
+                        sysnum::SYS_openat | sysnum::SYS_openat2 => {
+                            let path = read_string(child, regs.rsi as *mut c_void);
+                            if let Some(path) = path {
+                                if let Some(path) = filter_path(&path) {
+                                    let flags = regs.rdx as u32;
+                                    update_file_access(file_map, &path, flags);
+                                }
+                            }
+                        }
+                        sysnum::SYS_open => {
+                            let path = read_string(child, regs.rdi as *mut c_void);
+                            if let Some(path) = path {
+                                if let Some(path) = filter_path(&path) {
+                                    let flags = regs.rsi as u32;
+                                    update_file_access(file_map, &path, flags);
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                ptrace::syscall(child, None)?;
+            }
+            WaitStatus::Stopped(_, Signal::SIGSTOP) => {
+                ptrace::syscall(child, None)?;
+            }
+            WaitStatus::Exited(_, code) => {
+                eprintln!("Child exited with code: {}", code);
+                break;
+            }
+            WaitStatus::Signaled(_, sig, _) => {
+                eprintln!("Child killed by signal: {:?}", sig);
+                break;
+            }
+            WaitStatus::PtraceEvent(_, _, _) => {
+                ptrace::syscall(child, None)?;
+            }
+            _ => {
+                ptrace::syscall(child, None)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn read_string(pid: Pid, addr: *mut c_void) -> Option<String> {
+    if addr.is_null() {
+        return None;
+    }
+
+    let mut data = [0u8; 256];
+
+    for offset in (0..256).step_by(std::mem::size_of::<usize>()) {
+        let read_addr = unsafe { addr.byte_add(offset) };
+        match ptrace::read(pid, read_addr) {
+            Ok(val) => {
+                for i in 0..std::mem::size_of::<usize>() {
+                    let byte = (val >> (i * 8)) as u8;
+                    data[offset + i] = byte;
+                    if byte == 0 {
+                        return Some(String::from_utf8_lossy(&data[..offset + i]).to_string());
+                    }
+                }
+            }
+            Err(_) => return None,
+        }
+    }
+
+    None
+}
+
+fn filter_path(path: &str) -> Option<String> {
+    if path.is_empty() {
+        return None;
+    }
+
+    let skip_prefixes = [
+        "/proc/self/",
+        "/proc/thread-self/",
+        "/dev/pts/",
+        "/usr/lib/locale/",
+        "/usr/share/locale/",
+    ];
+
+    for prefix in skip_prefixes {
+        if path.starts_with(prefix) {
+            return None;
+        }
+    }
+
+    if path.starts_with('/') {
+        Some(path.to_string())
+    } else {
+        None
+    }
+}
+
+fn update_file_access(file_map: &mut BTreeMap<String, FileAccess>, path: &str, flags: u32) {
+    let read = (flags & 0x3) != 1;
+    let write = (flags & 0x2) != 0 || (flags & 0x40) != 0 || (flags & 0x200) != 0;
+
+    let entry = file_map.entry(path.to_string()).or_insert(FileAccess {
+        path: path.to_string(),
         read: false,
         write: false,
         execute: false,
     });
 
-    // Detect read/write from flags
-    // Common patterns: O_RDONLY, O_WRONLY, O_RDWR, O_CREAT, O_APPEND, etc.
-    if strace_line.contains("O_RDONLY") {
+    if read {
         entry.read = true;
     }
-    if strace_line.contains("O_WRONLY") {
-        entry.write = true;
-    }
-    if strace_line.contains("O_RDWR") {
-        entry.read = true;
-        entry.write = true;
-    }
-    if strace_line.contains("O_CREAT") || strace_line.contains("O_APPEND") {
+    if write {
         entry.write = true;
     }
 
-    // If no explicit flags, assume read-only (many files are opened for reading)
     if !entry.read && !entry.write {
         entry.read = true;
     }
-}
-
-fn extract_path_from_openat(line: &str) -> Option<String> {
-    // Format: openat(AT_FDCWD, "/path", ...) or similar
-    // Must start with openat
-    if !line.contains("openat(") {
-        return None;
-    }
-
-    // Find opening quote after openat(
-    if let Some(start) = line.find("openat(") {
-        let after_openat = &line[start + 7..];
-        // Skip past AT_FDCWD or similar first argument
-        if let Some(first_comma) = after_openat.find(',') {
-            let after_first_comma = &after_openat[first_comma + 1..];
-            // Now extract the quoted string
-            extract_quoted_string(after_first_comma)
-        } else {
-            None
-        }
-    } else {
-        None
-    }
-}
-
-fn extract_path_from_open(line: &str) -> Option<String> {
-    // Format: open("/path", ...)
-    // Skip if it's openat
-    if line.contains("openat") {
-        return None;
-    }
-
-    // Find opening quote after open(
-    if let Some(start) = line.find("open(") {
-        let after_open = &line[start + 5..];
-        extract_quoted_string(after_open)
-    } else {
-        None
-    }
-}
-
-fn extract_quoted_string(s: &str) -> Option<String> {
-    let s = s.trim();
-    // Look for opening quote
-    if let Some(quote_start) = s.find('"') {
-        let after_quote = &s[quote_start + 1..];
-        // Look for closing quote
-        if let Some(quote_end) = after_quote.find('"') {
-            let path = &after_quote[..quote_end];
-            // Only return valid paths
-            if !path.is_empty() && path.starts_with('/') {
-                return Some(path.to_string());
-            }
-        }
-    }
-    None
 }

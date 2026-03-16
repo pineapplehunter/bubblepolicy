@@ -61,7 +61,7 @@ fn main() -> Result<()> {
             generate_policy,
             output,
         } => {
-            myjail::review::run(&paths, generate_policy, output.as_deref())?;
+            myjail::review::run(&paths, generate_policy, &output)?;
         }
         Commands::Create {
             policy,
