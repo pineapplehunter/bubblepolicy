@@ -1,0 +1,1570 @@
+{
+  "entries": [
+    {
+      "path": "/dev/tty",
+      "allowed": false,
+      "read": true,
+      "write": true
+    },
+    {
+      "path": "/etc/localtime",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/etc/man_db.conf",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/.manpath",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/.nix-profile/bin/man",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/.nix-profile/share/man",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/.nix-profile/share/man/index.db",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/.nix-profile/share/man/man1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/.nix-profile/share/man/man1/man.1.gz",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/.nix-profile/share/man/man3",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/.nix-profile/share/man/man4",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/.nix-profile/share/man/man5",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/.nix-profile/share/man/man7",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/.nix-profile/share/man/man8",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/an-ext.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/an.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/andoc.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/devtag.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/man.local",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/glibc-hwcaps/x86-64-v2/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/glibc-hwcaps/x86-64-v2/libdl.so.2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/glibc-hwcaps/x86-64-v2/libmandb-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/glibc-hwcaps/x86-64-v2/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/glibc-hwcaps/x86-64-v3/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/glibc-hwcaps/x86-64-v3/libdl.so.2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/glibc-hwcaps/x86-64-v3/libmandb-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/glibc-hwcaps/x86-64-v3/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/libdl.so.2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/libgcc_s.so.1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/libgdbm.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/libm.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/libman-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/libmandb-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/libpipeline.so.1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/deps/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/glibc-hwcaps/x86-64-v2/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/glibc-hwcaps/x86-64-v2/libdl.so.2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/glibc-hwcaps/x86-64-v2/libmandb-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/glibc-hwcaps/x86-64-v2/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/glibc-hwcaps/x86-64-v3/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/glibc-hwcaps/x86-64-v3/libdl.so.2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/glibc-hwcaps/x86-64-v3/libmandb-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/glibc-hwcaps/x86-64-v3/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/libdl.so.2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/libgcc_s.so.1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/libgdbm.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/libm.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/libman-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/libmandb-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/libpipeline.so.1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tmp/myjail/target/debug/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/home/takata/tty-char.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/0qlmqvyckf8zyx03n00azgznnkzgi5xw-glibc-locales-2.42-51/lib/locale/locale-archive",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/27p2i4a5czr03678y231ivfppq9w9p8c-libpipeline-1.5.8/lib/glibc-hwcaps/x86-64-v2/libpipeline.so.1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/27p2i4a5czr03678y231ivfppq9w9p8c-libpipeline-1.5.8/lib/glibc-hwcaps/x86-64-v3/libpipeline.so.1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/27p2i4a5czr03678y231ivfppq9w9p8c-libpipeline-1.5.8/lib/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/27p2i4a5czr03678y231ivfppq9w9p8c-libpipeline-1.5.8/lib/libpipeline.so.1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/2hjsch59amjs3nbgh7ahcfzm2bfwl8zi-bash-5.3p9/share/locale/ja.UTF-8/LC_MESSAGES/bash.mo",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/2hjsch59amjs3nbgh7ahcfzm2bfwl8zi-bash-5.3p9/share/locale/ja.utf8/LC_MESSAGES/bash.mo",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/2hjsch59amjs3nbgh7ahcfzm2bfwl8zi-bash-5.3p9/share/locale/ja/LC_MESSAGES/bash.mo",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/2hjsch59amjs3nbgh7ahcfzm2bfwl8zi-bash-5.3p9/share/locale/ja_JP.UTF-8/LC_MESSAGES/bash.mo",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/2hjsch59amjs3nbgh7ahcfzm2bfwl8zi-bash-5.3p9/share/locale/ja_JP.utf8/LC_MESSAGES/bash.mo",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/2hjsch59amjs3nbgh7ahcfzm2bfwl8zi-bash-5.3p9/share/locale/ja_JP/LC_MESSAGES/bash.mo",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/590yx3aynyhs48jyk8ip37fk1mjqfhkb-patchelf-0.15.2/share/man",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/590yx3aynyhs48jyk8ip37fk1mjqfhkb-patchelf-0.15.2/share/man/index.db",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/590yx3aynyhs48jyk8ip37fk1mjqfhkb-patchelf-0.15.2/share/man/man1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/glibc-hwcaps/x86-64-v2/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/glibc-hwcaps/x86-64-v2/libdl.so.2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/glibc-hwcaps/x86-64-v2/libmandb-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/glibc-hwcaps/x86-64-v2/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/glibc-hwcaps/x86-64-v3/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/glibc-hwcaps/x86-64-v3/libdl.so.2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/glibc-hwcaps/x86-64-v3/libmandb-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/glibc-hwcaps/x86-64-v3/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/libdl.so.2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/libgcc_s.so.1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/libgdbm.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/libm.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/libman-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/libmandb-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/libpipeline.so.1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/75nvjqcc8hqr9w8l581dpk967ar1278r-libsecret-0.21.7/lib/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7qb2ak72cnd85rgjlsg2v7jkrf382s4y-gdbm-1.26-lib/lib/glibc-hwcaps/x86-64-v2/libgdbm.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7qb2ak72cnd85rgjlsg2v7jkrf382s4y-gdbm-1.26-lib/lib/glibc-hwcaps/x86-64-v3/libgdbm.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7qb2ak72cnd85rgjlsg2v7jkrf382s4y-gdbm-1.26-lib/lib/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7qb2ak72cnd85rgjlsg2v7jkrf382s4y-gdbm-1.26-lib/lib/libgdbm.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7qb2ak72cnd85rgjlsg2v7jkrf382s4y-gdbm-1.26-lib/lib/libpipeline.so.1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/bin/nroff",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/charset.alias",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/an-ext.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/an.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/andoc.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/composite.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/devtag.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/en.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/fallbacks.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/hyphen.en",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/hyphenex.en",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/latin1.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/man.local",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/pdfpic.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/pspic.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/troffrc",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/troffrc-end",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/tty-char.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/lib/groff/site-tmac/tty.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/font/devutf8/B",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/font/devutf8/BI",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/font/devutf8/DESC",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/font/devutf8/I",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/font/devutf8/R",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/an-ext.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/an.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/andoc.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/composite.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/devtag.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/en.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/fallbacks.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/hyphen.en",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/hyphenex.en",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/latin1.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/pdfpic.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/pspic.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/troffrc",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/troffrc-end",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/tty-char.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/1.23.0/tmac/tty.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-font/devutf8/B",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-font/devutf8/BI",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-font/devutf8/DESC",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-font/devutf8/I",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-font/devutf8/R",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/an-ext.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/an.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/andoc.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/composite.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/devtag.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/en.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/fallbacks.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/hyphen.en",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/hyphenex.en",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/latin1.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/man.local",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/pdfpic.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/pspic.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/troffrc",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/troffrc-end",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/tty-char.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/7v308am31q0n3zk2361gqi5pv3swzrnw-groff-1.23.0/share/groff/site-tmac/tty.tmac",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8j3ljzdpjvrw6f1wcra3scxwzm8422vq-man-db-2.13.1/lib/man-db/glibc-hwcaps/x86-64-v2/libmandb-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8j3ljzdpjvrw6f1wcra3scxwzm8422vq-man-db-2.13.1/lib/man-db/glibc-hwcaps/x86-64-v3/libmandb-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8j3ljzdpjvrw6f1wcra3scxwzm8422vq-man-db-2.13.1/lib/man-db/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8j3ljzdpjvrw6f1wcra3scxwzm8422vq-man-db-2.13.1/lib/man-db/libgdbm.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8j3ljzdpjvrw6f1wcra3scxwzm8422vq-man-db-2.13.1/lib/man-db/libman-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8j3ljzdpjvrw6f1wcra3scxwzm8422vq-man-db-2.13.1/lib/man-db/libmandb-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8j3ljzdpjvrw6f1wcra3scxwzm8422vq-man-db-2.13.1/lib/man-db/libpipeline.so.1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8j3ljzdpjvrw6f1wcra3scxwzm8422vq-man-db-2.13.1/share/locale/ja.UTF-8/LC_MESSAGES/man-db.mo",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8j3ljzdpjvrw6f1wcra3scxwzm8422vq-man-db-2.13.1/share/locale/ja.utf8/LC_MESSAGES/man-db.mo",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8j3ljzdpjvrw6f1wcra3scxwzm8422vq-man-db-2.13.1/share/locale/ja/LC_MESSAGES/man-db.mo",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8j3ljzdpjvrw6f1wcra3scxwzm8422vq-man-db-2.13.1/share/locale/ja_JP.UTF-8/LC_MESSAGES/man-db.mo",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8j3ljzdpjvrw6f1wcra3scxwzm8422vq-man-db-2.13.1/share/locale/ja_JP.utf8/LC_MESSAGES/man-db.mo",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8j3ljzdpjvrw6f1wcra3scxwzm8422vq-man-db-2.13.1/share/locale/ja_JP/LC_MESSAGES/man-db.mo",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8j3ljzdpjvrw6f1wcra3scxwzm8422vq-man-db-2.13.1/share/man/man1/man.1.gz",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8laf6k81j9ckylrigj3xsk76j69knhvl-gnugrep-3.12/share/man",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8laf6k81j9ckylrigj3xsk76j69knhvl-gnugrep-3.12/share/man/index.db",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8laf6k81j9ckylrigj3xsk76j69knhvl-gnugrep-3.12/share/man/man1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8y5jm97n4lyw80gh71yihghbhqc11fdz-patch-2.8/share/man",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8y5jm97n4lyw80gh71yihghbhqc11fdz-patch-2.8/share/man/index.db",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/8y5jm97n4lyw80gh71yihghbhqc11fdz-patch-2.8/share/man/man1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/b3rx5wac9hhfxn9120xkcvdwj51mc9z2-findutils-4.10.0/share/man",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/b3rx5wac9hhfxn9120xkcvdwj51mc9z2-findutils-4.10.0/share/man/index.db",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/b3rx5wac9hhfxn9120xkcvdwj51mc9z2-findutils-4.10.0/share/man/man1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/gjg30k1xbw0cs5l8sdd8rbplnnn8f9sv-ghostty-1.3.0/share/man",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/gjg30k1xbw0cs5l8sdd8rbplnnn8f9sv-ghostty-1.3.0/share/man/index.db",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/gjg30k1xbw0cs5l8sdd8rbplnnn8f9sv-ghostty-1.3.0/share/man/man1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/gjg30k1xbw0cs5l8sdd8rbplnnn8f9sv-ghostty-1.3.0/share/man/man5",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/icrrz26xbyp293kagrlkab1bhc6gra0r-diffutils-3.12/share/man",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/icrrz26xbyp293kagrlkab1bhc6gra0r-diffutils-3.12/share/man/index.db",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/icrrz26xbyp293kagrlkab1bhc6gra0r-diffutils-3.12/share/man/man1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/ihpdbhy4rfxaixiamyb588zfc3vj19al-gcc-15.2.0-lib/lib/glibc-hwcaps/x86-64-v2/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/ihpdbhy4rfxaixiamyb588zfc3vj19al-gcc-15.2.0-lib/lib/glibc-hwcaps/x86-64-v3/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/ihpdbhy4rfxaixiamyb588zfc3vj19al-gcc-15.2.0-lib/lib/libgcc_s.so.1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/ihpdbhy4rfxaixiamyb588zfc3vj19al-gcc-15.2.0-lib/lib/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/glibc-hwcaps/x86-64-v2/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/glibc-hwcaps/x86-64-v2/libdl.so.2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/glibc-hwcaps/x86-64-v2/libmandb-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/glibc-hwcaps/x86-64-v2/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/glibc-hwcaps/x86-64-v3/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/glibc-hwcaps/x86-64-v3/libdl.so.2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/glibc-hwcaps/x86-64-v3/libmandb-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/glibc-hwcaps/x86-64-v3/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/libdl.so.2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/libgcc_s.so.1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/libgdbm.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/libm.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/libman-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/libmandb-2.13.1.so",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/libpipeline.so.1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/lib/rustlib/x86_64-unknown-linux-gnu/lib/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/share/man",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/share/man/index.db",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/in3qmq158iid539qq07cyhvnp58bf418-rust-default-1.94.0/share/man/man1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/isva9q9zx3frx6hh6cnpihh1kd2bx6bk-gnutar-1.35/share/man",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/isva9q9zx3frx6hh6cnpihh1kd2bx6bk-gnutar-1.35/share/man/index.db",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/isva9q9zx3frx6hh6cnpihh1kd2bx6bk-gnutar-1.35/share/man/man1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/isva9q9zx3frx6hh6cnpihh1kd2bx6bk-gnutar-1.35/share/man/man8",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/gconv/gconv-modules",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/gconv/gconv-modules.cache",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/gconv/gconv-modules.d",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/gconv/gconv-modules.d/gconv-modules-extra.conf",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/glibc-hwcaps/x86-64-v2/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/glibc-hwcaps/x86-64-v2/libdl.so.2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/glibc-hwcaps/x86-64-v2/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/glibc-hwcaps/x86-64-v3/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/glibc-hwcaps/x86-64-v3/libdl.so.2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/glibc-hwcaps/x86-64-v3/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/libc.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/libdl.so.2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/libgcc_s.so.1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/libm.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/libstdc++.so.6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/share/locale/locale.alias",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/mxhjvfhpj123hqgrc4qd0fjr0vb6m7h9-man-pages-6.17-man/share/man/man7/man.7.gz",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/qn1pfnn2xgfwdr6avw1fnvwsabi83973-bubblewrap-0.11.0/share/man",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/qn1pfnn2xgfwdr6avw1fnvwsabi83973-bubblewrap-0.11.0/share/man/index.db",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/qn1pfnn2xgfwdr6avw1fnvwsabi83973-bubblewrap-0.11.0/share/man/man1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/w1n7yp2vnldr395hbwbcaw9sflh413bm-gzip-1.14/bin/gzip",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/wv7qq5yb8plyhxji9x3r5gpkyfm2kf29-gnused-4.9/share/man",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/wv7qq5yb8plyhxji9x3r5gpkyfm2kf29-gnused-4.9/share/man/index.db",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/nix/store/wv7qq5yb8plyhxji9x3r5gpkyfm2kf29-gnused-4.9/share/man/man1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/index.db",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/ja",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/ja/index.db",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/ja/man1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/ja/man5",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/ja/man8",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man0p",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man1",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man1/man.1.gz",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man1p",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man1p/man.1p.gz",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man2",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man2const",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man2type",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man3",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man3attr",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man3const",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man3head",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man3p",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man3type",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man4",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man5",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man6",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man7",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man7/man.7.gz",
+      "allowed": true,
+      "read": true,
+      "write": false
+    },
+    {
+      "path": "/run/current-system/sw/share/man/man8",
+      "allowed": true,
+      "read": true,
+      "write": false
+    }
+  ]
+}

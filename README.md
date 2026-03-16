@@ -23,7 +23,7 @@ Usage: myjail <COMMAND>
 
 Commands:
   trace   Trace system calls and file access of a command
-  scan    Review traced paths and toggle allow/deny in a TUI
+  review  Review traced paths and toggle allow/deny in a TUI
   create  Create a bubblewrap wrapper from a policy file
   help    Print this message or the help of the given subcommand(s)
 ```
@@ -36,12 +36,12 @@ Trace system calls and file access of a command:
 myjail trace -- firefox
 ```
 
-### scan
+### review
 
 Review traced paths in a TUI file tree and toggle allow/deny:
 
 ```bash
-myjail scan /path/to/trace/output.json
+myjail review /path/to/trace/output.json
 ```
 
 ### create
@@ -55,7 +55,7 @@ myjail create --policy policy.json --binary /usr/bin/firefox --output firefox-sa
 ## Workflow
 
 1. **Trace**: Run `myjail trace -- <command>` to trace all system calls and file accesses
-2. **Scan**: Review the paths in the TUI and toggle which directories should be allowed/denied
+2. **Review**: Review the paths in the TUI and toggle which directories should be allowed/denied
 3. **Create**: Generate a bubblewrap wrapper script to sandbox your application
 
 ## Requirements

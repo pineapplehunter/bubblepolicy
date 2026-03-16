@@ -5,7 +5,9 @@ A Rust CLI tool for configuring bubblewrap sandboxes with SELinux-style workflow
 ## Project Overview
 
 - `src/main.rs` - CLI entry point with clap
-- `src/` - Module-based architecture (trace, scan, create)
+- `src/trace.rs` - Trace subcommand (strace wrapper)
+- `src/review.rs` - Review subcommand (TUI file tree toggler)
+- `src/create.rs` - Create subcommand (wrapper generator)
 - `Cargo.toml` - Rust dependencies
 
 ## Build/Lint/Test Commands
@@ -43,20 +45,26 @@ cargo doc            # Generate docs
 ### General
 - Use 4-space indentation for Rust
 - Follow `rustfmt` default style
-- Use `anyhow` for error handling
+- Use `color_eyre` for error handling (Result<T, eyre::Report>)
 - Use `log` + `env_logger` for logging
+
+### Error Handling with color_eyre
+```rust
+use color_eyre::{Result, eyre::{WrapErr, bail}};
+
+// For context on errors:
+let x = operation().context("Failed to do thing")?;
+
+// For bailing early with an error:
+if condition {
+    bail!("Something went wrong: {}", reason);
+}
+```
 
 ### Naming
 - `snake_case` for functions/variables
 - `CamelCase` for types/enums
 - Descriptive names: `allowed_paths` not `paths`
-
-### Error Handling
-- Use `anyhow::Result<T>` for functions that can fail
-- Use `anyhow::bail!("message")` for early returns
-- Provide context in errors: `context("failed to open file")`
-
-### Structs & Enums
 ```rust
 #[derive(Clone, Debug)]
 struct Config {
@@ -72,25 +80,27 @@ enum Permission {
 ```
 
 ### Module Structure
+Each subcommand is a module:
 ```rust
-mod trace;
-mod scan;
-mod create;
-
-pub fn run() -> Result<()> { ... }
+pub fn run(args: &[Type]) -> Result<()> {
+    // implementation
+    Ok(())
+}
 ```
 
 ## Development
 
 ### Adding Dependencies
-1. Add to `Cargo.toml` under `[dependencies]`
-2. Run `cargo check` to fetch and verify
-3. Rebuild with `cargo build`
+```bash
+cargo add <package>          # Add latest version
+cargo add <package> --vers 1.0  # Add specific version
+```
 
-### Adding Commands
+### Adding New Subcommands
 1. Add variant to `Commands` enum in `main.rs`
-2. Create module in `src/<command>.rs`
-3. Implement `pub fn run() -> Result<()>`
+2. Create module in `src/<command>.rs` with `pub fn run() -> Result<()>`
+3. Add `pub mod <command>;` to `src/lib.rs`
+4. Add handler in `main.rs` match block
 
 ## Working with This Repository
 
@@ -98,10 +108,12 @@ pub fn run() -> Result<()> { ... }
 2. **Always run `cargo clippy`** to catch issues
 3. **Test with `cargo test`** before submitting
 4. Build release with `cargo build --release`
+5. Use `color_eyre::eyre::{bail, WrapErr}` for error handling
 
 ## Notes for Agents
 
-- This is a bubblewrap policy tool with 3 subcommands: `trace`, `scan`, `create`
-- Uses `ratatui` for TUI, `clap` for CLI parsing
+- This is a bubblewrap policy tool with 3 subcommands: `trace`, `review`, `create`
+- Uses `ratatui` for TUI (review command), `clap` for CLI parsing, `color_eyre` for errors
 - Requires `strace` system package for trace command
 - Output: shell scripts or binary wrappers for bubblewrap
+- SELinux-style workflow: audit → review → enforce

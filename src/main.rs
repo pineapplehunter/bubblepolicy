@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use color_eyre::Result;
+use color_eyre::{eyre::bail, Result};
 
 #[derive(Parser)]
 #[command(name = "myjail")]
@@ -16,23 +16,32 @@ enum Commands {
         /// Command to trace (with arguments)
         #[arg(trailing_var_arg = true)]
         cmd: Vec<String>,
+        /// Output file (default: stdout)
+        #[arg(short, long)]
+        output: Option<String>,
     },
     /// Review traced paths and toggle allow/deny
-    Scan {
-        /// Paths to scan (default: current directory)
+    Review {
+        /// Paths to review (default: current directory)
         #[arg(default_value = ".")]
         paths: Vec<String>,
+        /// Generate policy without TUI
+        #[arg(short, long)]
+        generate_policy: bool,
+        /// Output file (default: stdout)
+        #[arg(short, long)]
+        output: Option<String>,
     },
     /// Create a bubblewrap wrapper from a policy file
     Create {
         /// Policy file to use
         #[arg(short, long)]
         policy: Option<String>,
+        /// Binary to wrap (default: /bin/sh)
+        binary: Option<String>,
         /// Output file (default: stdout)
         #[arg(short, long)]
         output: Option<String>,
-        /// Binary to wrap
-        binary: Option<String>,
     },
 }
 
@@ -41,14 +50,18 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Trace { cmd } => {
+        Commands::Trace { cmd, output } => {
             if cmd.is_empty() {
-                color_eyre::bail!("Error: command required. Usage: myjail trace -- <command>");
+                bail!("Error: command required. Usage: myjail trace -- <command>");
             }
-            myjail::trace::run(&cmd)?;
+            myjail::trace::run(&cmd, output.as_deref())?;
         }
-        Commands::Scan { paths } => {
-            myjail::scan::run(&paths)?;
+        Commands::Review {
+            paths,
+            generate_policy,
+            output,
+        } => {
+            myjail::review::run(&paths, generate_policy, output.as_deref())?;
         }
         Commands::Create {
             policy,
