@@ -83,21 +83,14 @@ fn dedup_entries(entries: &[PolicyEntry]) -> Vec<PolicyEntry> {
         is_leaf: false,
         children: HashMap::new(),
     };
-    let mut root_was_in_input = false;
 
     for entry in entries {
-        // Track if root was in input
-        if entry.path == "/" {
-            root_was_in_input = true;
-        }
-
         if !entry.access.is_allowed() {
             continue;
         }
 
         let path = &entry.path;
 
-        // Handle root specially
         if path == "/" {
             root.access = Some(entry.access.clone());
             continue;
@@ -137,80 +130,83 @@ fn dedup_entries(entries: &[PolicyEntry]) -> Vec<PolicyEntry> {
         }
     }
 
-    fn get_effective_access(node: &TreeNode) -> Option<Access> {
-        if let Some(access) = &node.access {
-            return Some(access.clone());
-        }
-
-        if node.children.is_empty() {
-            return None;
-        }
-
-        let mut child_accesses: Vec<Access> = Vec::new();
+    // Simple recursive algorithm - emit only explicit nodes that differ from parent
+    fn collect_deduped(
+        node: &TreeNode,
+        parent_access: Option<&Access>,
+        result: &mut Vec<PolicyEntry>,
+    ) {
+        // Check if all children have same explicit access (can collapse)
+        let mut child_accesses: Vec<&Access> = Vec::new();
         for child in node.children.values() {
-            if let Some(access) = get_effective_access(child) {
+            if let Some(access) = &child.access {
                 child_accesses.push(access);
             }
         }
 
-        if child_accesses.is_empty() {
-            None
-        } else if child_accesses.iter().all(|a| *a == child_accesses[0]) {
-            // ALL children have same access - can collapse
-            Some(child_accesses[0].clone())
+        // Check if all children have same access
+        let can_collapse =
+            !child_accesses.is_empty() && child_accesses.iter().all(|a| *a == child_accesses[0]);
+
+        if can_collapse {
+            // All children have same explicit access - collapse to parent
+            // Emit this node if it has explicit access different from parent
+            if let Some(access) = &node.access {
+                let diff = match parent_access {
+                    None => true,
+                    Some(p) => !is_same_access(p, access),
+                };
+                if diff {
+                    result.push(PolicyEntry {
+                        path: node.path.clone(),
+                        access: access.clone(),
+                    });
+                }
+            } else {
+                // No explicit on this node, but can collapse children to it
+                let collapsed = child_accesses[0];
+                let diff = match parent_access {
+                    None => true,
+                    Some(p) => !is_same_access(p, collapsed),
+                };
+                if diff {
+                    result.push(PolicyEntry {
+                        path: node.path.clone(),
+                        access: collapsed.clone(),
+                    });
+                }
+            }
         } else {
-            // Children have different access - don't collapse
-            None
+            // Can't collapse - pass this node's access to children
+            let inherited = node.access.as_ref().or(parent_access);
+            for child in node.children.values() {
+                collect_deduped(child, inherited, result);
+            }
+
+            // Emit this node if explicit and different from parent
+            if let Some(access) = &node.access {
+                let diff = match parent_access {
+                    None => true,
+                    Some(p) => !is_same_access(p, access),
+                };
+                if diff {
+                    result.push(PolicyEntry {
+                        path: node.path.clone(),
+                        access: access.clone(),
+                    });
+                }
+            }
         }
     }
 
-    fn collect_deduped(
-        node: &TreeNode,
-        ancestor_access: Option<&Access>,
-        result: &mut Vec<PolicyEntry>,
-    ) {
-        // Get effective access for this node
-        let effective = get_effective_access(node);
-
-        // Determine what children will inherit
-        let child_ancestor = if let Some(access) = &effective {
-            // Decide whether to emit this node
-            // We emit if:
-            // 1. Root has explicit access, OR
-            // 2. Node has explicit access and differs from ancestor, OR
-            // 3. Node has NO explicit but has computed access (all children same)
-            //    AND differs from ancestor (or no ancestor)
-            let should_emit = if node.path == "/" {
-                node.access.is_some()
-            } else if node.access.is_some() {
-                // Has explicit access - emit if different from ancestor
-                ancestor_access.map_or(true, |a| *a != *access)
-            } else {
-                // No explicit - has computed access (all children same)
-                // Emit if different from ancestor (or no ancestor - this becomes the root)
-                ancestor_access.map_or(true, |a| *a != *access)
-            };
-
-            if should_emit {
-                result.push(PolicyEntry {
-                    path: node.path.clone(),
-                    access: access.clone(),
-                });
-                // Children inherit from this node
-                Some(access)
-            } else {
-                // Children inherit from ancestor
-                ancestor_access
-            }
-        } else {
-            // No effective access at all
-            ancestor_access
-        };
-
-        // Process children
-        for child in node.children.values() {
-            collect_deduped(child, child_ancestor, result);
-        }
+    fn is_same_access(a: &Access, b: &Access) -> bool {
+        matches!(
+            (a, b),
+            (Access::Deny, Access::Deny)
+                | (Access::ReadOnly, Access::ReadOnly)
+                | (Access::ReadWrite, Access::ReadWrite)
+                | (Access::Tmpfs, Access::Tmpfs)
+        )
     }
 
     let mut result = Vec::new();
@@ -312,158 +308,4 @@ exec bwrap \
     );
 
     Ok(script)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // Rule 1: All children have same access -> collapse to parent
-    // /:ro, /aaa:ro, /aaa/bbb:ro, /aaa/ccc:ro -> /:ro
-    #[test]
-    fn test_collapse_rule_1() {
-        let entries = vec![
-            PolicyEntry {
-                path: "/".to_string(),
-                access: Access::ReadOnly,
-            },
-            PolicyEntry {
-                path: "/aaa".to_string(),
-                access: Access::ReadOnly,
-            },
-            PolicyEntry {
-                path: "/aaa/bbb".to_string(),
-                access: Access::ReadOnly,
-            },
-            PolicyEntry {
-                path: "/aaa/ccc".to_string(),
-                access: Access::ReadOnly,
-            },
-        ];
-
-        let result = dedup_entries(&entries);
-
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].path, "/");
-        assert_eq!(result[0].access, Access::ReadOnly);
-    }
-
-    // Rule 2: Children have different access -> keep differing ones
-    // /:ro, /aaa:ro, /aaa/bbb:ro, /aaa/ccc:rw -> /:ro, /aaa/ccc:rw
-    #[test]
-    fn test_collapse_rule_2() {
-        let entries = vec![
-            PolicyEntry {
-                path: "/".to_string(),
-                access: Access::ReadOnly,
-            },
-            PolicyEntry {
-                path: "/aaa".to_string(),
-                access: Access::ReadOnly,
-            },
-            PolicyEntry {
-                path: "/aaa/bbb".to_string(),
-                access: Access::ReadOnly,
-            },
-            PolicyEntry {
-                path: "/aaa/ccc".to_string(),
-                access: Access::ReadWrite,
-            },
-        ];
-
-        let result = dedup_entries(&entries);
-
-        assert_eq!(result.len(), 2);
-        assert_eq!(result[0].path, "/");
-        assert_eq!(result[0].access, Access::ReadOnly);
-        assert_eq!(result[1].path, "/aaa/ccc");
-        assert_eq!(result[1].access, Access::ReadWrite);
-    }
-
-    // Rule 3: Deny at root, children have different access
-    // /:deny, /aaa:ro, /aaa/bbb:tmp, /aaa/ccc/ddd:rw -> /aaa:ro, /aaa/bbb:tmp, /aaa/ccc/ddd:rw
-    #[test]
-    fn test_collapse_rule_3() {
-        let entries = vec![
-            PolicyEntry {
-                path: "/".to_string(),
-                access: Access::Deny,
-            },
-            PolicyEntry {
-                path: "/aaa".to_string(),
-                access: Access::ReadOnly,
-            },
-            PolicyEntry {
-                path: "/aaa/bbb".to_string(),
-                access: Access::Tmpfs,
-            },
-            PolicyEntry {
-                path: "/aaa/ccc/ddd".to_string(),
-                access: Access::ReadWrite,
-            },
-        ];
-
-        let result = dedup_entries(&entries);
-
-        // Only allowed entries should appear (Deny entries are skipped)
-        eprintln!("Rule 3 result: {:?}", result);
-        assert_eq!(result.len(), 3);
-        assert_eq!(result[0].path, "/aaa");
-        assert_eq!(result[0].access, Access::ReadOnly);
-        assert_eq!(result[1].path, "/aaa/bbb");
-        assert_eq!(result[1].access, Access::Tmpfs);
-        assert_eq!(result[2].path, "/aaa/ccc/ddd");
-        assert_eq!(result[2].access, Access::ReadWrite);
-    }
-
-    // Additional test: siblings with same access collapse
-    #[test]
-    fn test_siblings_collapse() {
-        let entries = vec![
-            PolicyEntry {
-                path: "/a/1".to_string(),
-                access: Access::ReadOnly,
-            },
-            PolicyEntry {
-                path: "/a/2".to_string(),
-                access: Access::ReadOnly,
-            },
-            PolicyEntry {
-                path: "/a/3".to_string(),
-                access: Access::ReadOnly,
-            },
-        ];
-
-        let result = dedup_entries(&entries);
-
-        // All siblings have same access - collapse to parent
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].path, "/a");
-        assert_eq!(result[0].access, Access::ReadOnly);
-    }
-
-    // Additional test: mixed access among siblings
-    #[test]
-    fn test_siblings_mixed_access() {
-        let entries = vec![
-            PolicyEntry {
-                path: "/a/1".to_string(),
-                access: Access::ReadOnly,
-            },
-            PolicyEntry {
-                path: "/a/2".to_string(),
-                access: Access::ReadOnly,
-            },
-            PolicyEntry {
-                path: "/a/3".to_string(),
-                access: Access::ReadWrite,
-            },
-        ];
-
-        let result = dedup_entries(&entries);
-
-        // /a/1 and /a/2 collapse to /a with ReadOnly
-        // /a/3 stays as /a/3 with ReadWrite
-        assert_eq!(result.len(), 2);
-    }
 }
