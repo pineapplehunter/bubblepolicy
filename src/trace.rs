@@ -3,24 +3,20 @@ use nix::sys::ptrace;
 use nix::sys::signal::Signal;
 use nix::sys::wait::{waitpid, WaitStatus};
 use nix::unistd::{fork, ForkResult, Pid};
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::ffi::c_void;
 use std::fs;
 use std::os::unix::process::CommandExt;
 use syscall_numbers::native as sysnum;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+use crate::common::{Access, PolicyNode, PolicyTree};
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FileAccess {
     pub path: String,
     pub read: bool,
     pub write: bool,
     pub execute: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TraceOutput {
-    pub files: Vec<FileAccess>,
 }
 
 pub fn run(cmd: &[String], output: Option<&str>) -> Result<()> {
@@ -34,12 +30,11 @@ pub fn run(cmd: &[String], output: Option<&str>) -> Result<()> {
     eprintln!("Tracing: {} {:?}", binary, args);
 
     let file_accesses = trace_command(binary, args)?;
+    eprintln!("Found {} file accesses", file_accesses.len());
 
-    let trace_output = TraceOutput {
-        files: file_accesses,
-    };
-
-    let json = serde_json::to_string_pretty(&trace_output)?;
+    let tree = files_to_tree(file_accesses);
+    let trees: Vec<PolicyTree> = vec![tree];
+    let json = serde_json::to_string_pretty(&trees)?;
 
     if let Some(output_path) = output {
         fs::write(output_path, &json)?;
@@ -51,14 +46,85 @@ pub fn run(cmd: &[String], output: Option<&str>) -> Result<()> {
     Ok(())
 }
 
+fn files_to_tree(files: Vec<FileAccess>) -> PolicyTree {
+    use std::collections::HashMap;
+
+    #[derive(Clone)]
+    struct TreeNode {
+        path: String,
+        children: HashMap<String, TreeNode>,
+    }
+
+    let mut root = TreeNode {
+        path: "/".to_string(),
+        children: HashMap::new(),
+    };
+
+    for file in &files {
+        let parts: Vec<&str> = file.path.split('/').filter(|s| !s.is_empty()).collect();
+        let mut current = &mut root;
+
+        for (i, part) in parts.iter().enumerate() {
+            let _is_last = i == parts.len() - 1;
+            let child_path = if current.path == "/" {
+                format!("/{}", part)
+            } else {
+                format!("{}/{}", current.path, part)
+            };
+
+            if !current.children.contains_key(*part) {
+                current.children.insert(
+                    part.to_string(),
+                    TreeNode {
+                        path: child_path,
+                        children: HashMap::new(),
+                    },
+                );
+            }
+
+            current = current.children.get_mut(*part).unwrap();
+        }
+    }
+
+    fn build_policy_tree(node: &TreeNode) -> Vec<PolicyNode> {
+        let mut result = Vec::new();
+
+        if node.children.is_empty() {
+            return vec![PolicyNode {
+                path: node.path.clone(),
+                access: Access::ReadOnly,
+                children: vec![],
+            }];
+        }
+
+        let children: Vec<PolicyNode> =
+            node.children.values().flat_map(build_policy_tree).collect();
+
+        if !children.is_empty() {
+            result.push(PolicyNode {
+                path: node.path.clone(),
+                access: Access::ReadOnly,
+                children,
+            });
+        }
+
+        result
+    }
+
+    let entries = build_policy_tree(&root);
+
+    PolicyTree { entries }
+}
+
 fn trace_command(binary: &str, args: &[String]) -> Result<Vec<FileAccess>> {
     let mut file_map: BTreeMap<String, FileAccess> = BTreeMap::new();
+    let mut syscall_count: usize = 0;
 
     let pid = unsafe { fork() }?;
 
     match pid {
         ForkResult::Parent { child } => {
-            trace_child(child, &mut file_map)?;
+            trace_child(child, &mut file_map, &mut syscall_count)?;
         }
         ForkResult::Child => {
             ptrace::traceme()?;
@@ -66,21 +132,25 @@ fn trace_command(binary: &str, args: &[String]) -> Result<Vec<FileAccess>> {
         }
     }
 
+    eprintln!("Syscalls caught: {}", syscall_count);
+
     let mut files: Vec<FileAccess> = file_map.into_values().collect();
     files.sort();
 
     Ok(files)
 }
 
-fn trace_child(child: Pid, file_map: &mut BTreeMap<String, FileAccess>) -> Result<()> {
-    // Wait for initial stop
+fn trace_child(
+    child: Pid,
+    file_map: &mut BTreeMap<String, FileAccess>,
+    syscall_count: &mut usize,
+) -> Result<()> {
     match waitpid(child, None)? {
         WaitStatus::Stopped(_, Signal::SIGSTOP) => {}
         WaitStatus::Exited(_, _) | WaitStatus::Signaled(_, _, _) => return Ok(()),
         _ => {}
     }
 
-    // Set options to trace fork/vfork/clone/exec
     ptrace::setoptions(
         child,
         nix::sys::ptrace::Options::PTRACE_O_TRACEFORK
@@ -89,17 +159,15 @@ fn trace_child(child: Pid, file_map: &mut BTreeMap<String, FileAccess>) -> Resul
             | nix::sys::ptrace::Options::PTRACE_O_TRACEEXEC,
     )?;
 
-    // Continue the child
     ptrace::syscall(child, None)?;
 
-    // Main trace loop
     loop {
         let status = waitpid(child, None)?;
 
         match status {
             WaitStatus::Stopped(_, Signal::SIGTRAP) => {
-                // Syscall entry or exit - check registers
                 if let Ok(regs) = ptrace::getregs(child) {
+                    *syscall_count += 1;
                     let syscall_num = regs.orig_rax as i64;
 
                     match syscall_num {

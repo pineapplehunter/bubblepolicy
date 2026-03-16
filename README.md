@@ -1,6 +1,6 @@
 # myjail
 
-A Rust CLI tool for configuring bubblewrap sandboxes using an SELinux-style workflow: trace → review → create.
+A Rust CLI tool for configuring bubblewrap sandboxes using an SELinux-style workflow: trace → review → optimise → create.
 
 ## AI Disclosure
 
@@ -26,10 +26,12 @@ myjail - Bubblewrap sandbox policy tool
 Usage: myjail <COMMAND>
 
 Commands:
-  trace   Trace system calls and file access of a command
-  review  Review traced paths and toggle allow/deny in a TUI
-  create  Create a bubblewrap wrapper from a policy file
-  help    Print this message or the help of the given subcommand(s)
+  trace     Trace system calls and file access of a command
+  review    Review and manipulate tree attributes via CLI
+  review-ui Review traced paths in TUI and toggle allow/deny
+  optimise  Optimise/dedup the policy tree
+  create    Create a bubblewrap wrapper from a policy file
+  help      Print this message or the help of the given subcommand(s)
 ```
 
 ### trace
@@ -37,84 +39,92 @@ Commands:
 Trace system calls and file access of a command:
 
 ```bash
-myjail trace -- firefox
+myjail trace trace.json -- firefox
 ```
 
-Save trace to file:
+Output format (tree with default values):
 
-```bash
-myjail trace --output trace.json -- firefox
+```json
+{
+  "entries": [
+    {"path": "/", "access": "ReadOnly", "children": [...]}
+  ]
+}
 ```
 
-### review
+### review-ui
 
 Review traced paths in a TUI file tree and toggle allow/deny:
 
 ```bash
-myjail review trace.json
+myjail review-ui trace.json
 ```
 
-Generate policy without TUI:
+This will update the contents of `trace.json`.
+
+### review
+
+Manipulate tree attributes via CLI (for scripting):
 
 ```bash
-myjail review --generate-policy trace.json > policy.json
+# Set path access
+myjail review trace.json --ro /nix --rw /home --tmp /run
 ```
 
-Save review output to file:
+This updates the tree attributes inplace.
+
+### optimise
+
+Optimise/dedup the policy tree inplace (collapse same-access siblings):
 
 ```bash
-myjail review --output policy.json trace.json
+myjail optimise trace.json
 ```
+
+This reduces redundant entries by collapsing directories with identical access.
+The format of this is a list of trees.
 
 ### create
 
 Create a bubblewrap wrapper script from a policy:
 
 ```bash
-myjail create --policy policy.json --binary /usr/bin/firefox --output firefox-sandbox
+myjail create optimised.json
 ```
 
 The wrapper script will automatically:
-- Group directories with multiple subdirectories to reduce the number of bind mounts
+- Use unshare-all to create a sandbox.
 - Distinguish between read-only and read-write bind mounts
 - Include standard system mounts (/proc, /dev, /tmp, /run)
 
 ## Workflow
 
-1. **Trace**: Run `myjail trace -- <command>` to trace all system calls and file accesses
-2. **Review**: Review the paths in the TUI and toggle which directories should be allowed/denied
-3. **Create**: Generate a bubblewrap wrapper script to sandbox your application
+1. **Trace**: Run `myjail trace --output trace.json -- <command>` to trace all system calls and file accesses
+2. **Review**: Review the paths in TUI (`review-ui`) or CLI (`review`) to toggle which directories should be allowed/denied
+3. **Optimise**: Dedup the policy tree to reduce redundant entries
+4. **Create**: Generate a bubblewrap wrapper script to sandbox your application
 
 Example full workflow:
 
 ```bash
 # Step 1: Trace
-myjail trace --output trace.json -- /usr/bin/firefox
+myjail trace trace.json -- /usr/bin/firefox
 
-# Step 2: Review (or generate policy directly)
-myjail review --generate-policy --output policy.json trace.json
+# Step 2: Review (TUI)
+myjail review-ui trace.json
 
-# Step 3: Create wrapper
-myjail create --policy policy.json /usr/bin/firefox --output firefox-sandbox
+# Step 3: Review (CLI alternative)
+myjail review trace.json -r /etc -w /home
 
-# Step 4: Make executable and run
+# Step 4: Optimise
+myjail optimise trace.json
+
+# Step 5: Create wrapper
+myjail create trace.json /usr/bin/firefox > firefox-sandbox
+
+# Step 6: Make executable and run
 chmod +x firefox-sandbox
 ./firefox-sandbox
-```
-
-## Output Flags
-
-All subcommands support `--output` flag to save output to a file instead of stdout:
-
-```bash
-# Trace to file
-myjail trace --output mytrace.json -- command
-
-# Review to file
-myjail review --output mypolicy.json trace.json
-
-# Create wrapper to file
-myjail create --policy mypolicy.json /bin/program --output wrapper.sh
 ```
 
 ## Requirements

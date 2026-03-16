@@ -3,7 +3,7 @@ use color_eyre::{eyre::bail, Result};
 
 #[derive(Parser)]
 #[command(name = "myjail")]
-#[command(about = "Bubblewrap sandbox policy tool - trace, review, create", long_about = None)]
+#[command(about = "Bubblewrap sandbox policy tool - trace, review, optimise, create", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -13,35 +13,51 @@ struct Cli {
 enum Commands {
     /// Trace system calls and file access of a command
     Trace {
-        /// Command to trace (with arguments)
-        #[arg(trailing_var_arg = true)]
-        cmd: Vec<String>,
         /// Output file (default: stdout)
-        #[arg(short, long)]
-        output: Option<String>,
-    },
-    /// Review traced paths and toggle allow/deny
-    Review {
-        /// Paths to review (default: current directory)
-        #[arg(default_value = ".")]
-        paths: Vec<String>,
-        /// Generate policy without TUI
-        #[arg(short, long)]
-        generate_policy: bool,
-        /// Output file (required)
-        #[arg(short, long, required = true)]
+        #[arg(default_value = "-")]
         output: String,
+        /// Command to trace (with arguments)
+        #[arg(last = true)]
+        cmd: Vec<String>,
+    },
+    /// Review traced paths in TUI and toggle allow/deny
+    ReviewUi {
+        /// Input/output file (required)
+        #[arg(required = true)]
+        file: String,
+    },
+    /// Manipulate tree attributes via CLI
+    Review {
+        /// Input/output file (required)
+        #[arg(required = true)]
+        file: String,
+        /// Set paths as read-only
+        #[arg(short = 'r')]
+        ro: Vec<String>,
+        /// Set paths as read-write
+        #[arg(short = 'w')]
+        rw: Vec<String>,
+        /// Set paths as tmpfs
+        #[arg(short = 't')]
+        tmp: Vec<String>,
+        /// Set paths as deny
+        #[arg(short = 'd')]
+        deny: Vec<String>,
+    },
+    /// Optimise/dedup the policy tree (in place)
+    Optimise {
+        /// Input/output file (required)
+        #[arg(required = true)]
+        file: String,
     },
     /// Create a bubblewrap wrapper from a policy file
     Create {
-        /// Policy file to use
-        #[arg(short, long)]
-        policy: Option<String>,
+        /// Policy file (default: policy.json)
+        #[arg(default_value = "policy.json")]
+        policy: String,
         /// Binary to wrap (default: /bin/sh)
-        binary: Option<String>,
-        /// Output file (default: stdout)
-        #[arg(short, long)]
-        output: Option<String>,
+        #[arg(default_value = "/bin/sh")]
+        binary: String,
     },
 }
 
@@ -50,25 +66,34 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Trace { cmd, output } => {
+        Commands::Trace { output, cmd } => {
             if cmd.is_empty() {
-                bail!("Error: command required. Usage: myjail trace -- <command>");
+                bail!("Error: command required. Usage: myjail trace <output> -- <command>");
             }
-            myjail::trace::run(&cmd, output.as_deref())?;
+            let output = if output == "-" {
+                None
+            } else {
+                Some(output.as_str())
+            };
+            myjail::trace::run(&cmd, output)?;
+        }
+        Commands::ReviewUi { file } => {
+            myjail::review_ui::run(&file)?;
         }
         Commands::Review {
-            paths,
-            generate_policy,
-            output,
+            file,
+            ro,
+            rw,
+            tmp,
+            deny,
         } => {
-            myjail::review::run(&paths, generate_policy, &output)?;
+            myjail::review::run(&file, &ro, &rw, &tmp, &deny)?;
         }
-        Commands::Create {
-            policy,
-            output,
-            binary,
-        } => {
-            myjail::create::run(policy.as_deref(), output.as_deref(), binary.as_deref())?;
+        Commands::Optimise { file } => {
+            myjail::optimise::run(&file)?;
+        }
+        Commands::Create { policy, binary } => {
+            myjail::create::run(&policy, &binary)?;
         }
     }
 

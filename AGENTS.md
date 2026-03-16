@@ -5,7 +5,7 @@ A Rust CLI tool for configuring bubblewrap sandboxes with SELinux-style workflow
 ## Project Overview
 
 - `src/main.rs` - CLI entry point with clap
-- `src/trace.rs` - Trace subcommand (strace wrapper) - outputs tree format
+- `src/trace.rs` - Trace subcommand (strace wrapper) - outputs tree format with default ReadOnly access
 - `src/review_ui.rs` - Review subcommand (TUI file tree toggler)
 - `src/review.rs` - Review subcommand (CLI for manipulating tree attributes)
 - `src/optimise.rs` - Optimize subcommand (dedup tree)
@@ -173,8 +173,8 @@ The test script covers:
 
 ## Notes for Agents
 
-- This is a bubblewrap policy tool with 5 subcommands: `trace`, `review-ui`, `review`, `optimise`, `create`
-- Uses `ratatui` for TUI (review-ui command), `clap` for CLI parsing, `color_eyre` for errors
+- This is a bubblewrap policy tool with 4 subcommands: `trace`, `review`, `optimise`, `create`
+- Uses `clap` for CLI parsing, `color_eyre` for errors
 - Uses raw `ptrace` via `nix` crate for trace command (not external strace)
 - Uses `syscall_numbers` crate for syscall constants
 - Output: shell scripts or binary wrappers for bubblewrap
