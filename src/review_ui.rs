@@ -10,36 +10,10 @@ use ratatui::{
     style::{Color, Modifier, Style},
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
-use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum Access {
-    Deny,
-    ReadOnly,
-    ReadWrite,
-    Tmpfs,
-}
-
-impl Access {
-    pub fn is_allowed(&self) -> bool {
-        !matches!(self, Access::Deny)
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PolicyNode {
-    pub path: String,
-    pub access: Access,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub children: Vec<PolicyNode>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PolicyTree {
-    pub entries: Vec<PolicyNode>,
-}
+use crate::common::{Access, PolicyNode, PolicyTree};
 
 #[derive(Debug, Clone, PartialEq)]
 enum AllowState {
@@ -62,15 +36,18 @@ struct TreeNode {
     children: Vec<TreeNode>,
 }
 
+#[allow(dead_code)]
 struct App {
     root: TreeNode,
     path: Vec<usize>,
     dirty: bool,
     filename: String,
+    tree_count: usize,
+    current_tree: usize,
 }
 
 impl App {
-    fn from_policy_tree(tree: PolicyTree, filename: String) -> Self {
+    fn from_policy_trees(trees: Vec<PolicyTree>, filename: String) -> Self {
         let mut root = TreeNode {
             path: "/".to_string(),
             display_name: "/".to_string(),
@@ -81,18 +58,62 @@ impl App {
             children: Vec::new(),
         };
 
-        for entry in tree.entries {
-            Self::insert_node(&mut root, entry);
+        // Add each tree as a child of the root
+        for (tree_idx, tree) in trees.into_iter().enumerate() {
+            // Create a container node for each tree
+            let tree_label = if tree_idx == 0 {
+                "(abs)".to_string()
+            } else {
+                format!("(rel: {})", tree_idx)
+            };
+
+            let mut tree_node = TreeNode {
+                path: tree_label.clone(),
+                display_name: tree_label,
+                allow_state: AllowState::Partial,
+                expanded: true,
+                level: 1,
+                is_file: false,
+                children: Vec::new(),
+            };
+
+            for entry in tree.entries {
+                // Handle root entry specially
+                if entry.path == "/" {
+                    // Set root's access if it has no children
+                    if entry.children.is_empty() {
+                        tree_node.allow_state = match entry.access {
+                            Access::Deny => AllowState::Deny,
+                            Access::ReadOnly => AllowState::RO,
+                            Access::ReadWrite => AllowState::RW,
+                            Access::Tmpfs => AllowState::Tmp,
+                        };
+                    }
+                    // Add root's children as children of tree node
+                    for child in entry.children {
+                        Self::insert_node(&mut tree_node, child);
+                    }
+                } else {
+                    Self::insert_node(&mut tree_node, entry);
+                }
+            }
+
+            root.children.push(tree_node);
         }
+
+        let tree_count = root.children.len();
 
         App {
             root,
             path: vec![],
             dirty: false,
             filename,
+            tree_count,
+            current_tree: 0,
         }
     }
 
+    #[allow(clippy::double_ended_iterator_last)]
     fn insert_node(parent: &mut TreeNode, node: PolicyNode) {
         let is_file = node.children.is_empty();
         let display_name = node.path.split('/').next_back().unwrap_or("/").to_string();
@@ -142,8 +163,33 @@ impl App {
     }
 
     fn move_up(&mut self) {
-        if !self.path.is_empty() {
+        if self.path.is_empty() {
+            return;
+        }
+
+        // Try to go to previous sibling first
+        let current_idx = *self.path.last().unwrap();
+
+        if current_idx > 0 {
+            // Go to previous sibling
             self.path.pop();
+            self.path.push(current_idx - 1);
+
+            // If the previous sibling is expanded, go to its last visible descendant
+            self.go_to_last_visible_descendant();
+        } else {
+            // Already at first sibling, just go up
+            self.path.pop();
+        }
+    }
+
+    fn go_to_last_visible_descendant(&mut self) {
+        while let Some(node) = self.get_node_at_path(&self.path) {
+            if node.expanded && !node.children.is_empty() {
+                self.path.push(node.children.len() - 1);
+            } else {
+                break;
+            }
         }
     }
 
@@ -151,15 +197,37 @@ impl App {
         if let Some(node) = self.get_node_at_path(&self.path) {
             if node.expanded && !node.children.is_empty() {
                 self.path.push(0);
-            } else if let Some(parent_path) = self.get_parent_path() {
-                if let Some(parent) = self.get_node_at_path(&parent_path) {
-                    let current_idx = *self.path.last().unwrap();
-                    if current_idx + 1 < parent.children.len() {
-                        self.path.pop();
-                        self.path.push(current_idx + 1);
-                    }
+                return;
+            }
+        }
+
+        // Try to find next sibling at current level or higher
+        loop {
+            if self.path.is_empty() {
+                return;
+            }
+
+            let current_idx = *self.path.last().unwrap();
+            let parent_path_len = self.path.len() - 1;
+
+            // Get parent node
+            let parent_node = if parent_path_len == 0 {
+                Some(&self.root)
+            } else {
+                self.get_node_at_path(&self.path[..parent_path_len])
+            };
+
+            if let Some(parent) = parent_node {
+                // Try to go to next sibling
+                if current_idx + 1 < parent.children.len() {
+                    self.path.pop();
+                    self.path.push(current_idx + 1);
+                    return;
                 }
             }
+
+            // No more siblings at this level, go up one level and try again
+            self.path.pop();
         }
     }
 
@@ -174,6 +242,7 @@ impl App {
         Some(node)
     }
 
+    #[allow(dead_code)]
     fn get_parent_path(&self) -> Option<Vec<usize>> {
         if self.path.is_empty() {
             None
@@ -276,12 +345,21 @@ impl App {
         }
     }
 
-    fn to_policy_tree(&self) -> PolicyTree {
-        let mut entries = Vec::new();
+    fn to_policy_trees(&self) -> Vec<PolicyTree> {
+        let mut trees = Vec::new();
+
+        // Each child of root is a tree (marked with (abs), (rel: 1), etc.)
         for child in &self.root.children {
-            entries.push(self.node_to_policy_node(child));
+            let entries = vec![self.node_to_policy_node(child)];
+            trees.push(PolicyTree { entries });
         }
-        PolicyTree { entries }
+
+        // If no trees (shouldn't happen), return empty
+        if trees.is_empty() {
+            trees.push(PolicyTree { entries: vec![] });
+        }
+
+        trees
     }
 
     fn node_to_policy_node(&self, node: &TreeNode) -> PolicyNode {
@@ -309,11 +387,10 @@ pub fn run(filename: &str) -> Result<()> {
     let data = fs::read_to_string(filename)
         .with_context(|| format!("Failed to read file: {}", filename))?;
 
-    let tree: PolicyTree = serde_json::from_str(&data).context("Failed to parse JSON")?;
+    let trees: Vec<PolicyTree> = serde_json::from_str(&data).context("Failed to parse JSON")?;
 
-    let mut app = App::from_policy_tree(tree, filename.to_string());
+    let mut app = App::from_policy_trees(trees, filename.to_string());
 
-    // Try to setup terminal for interactive mode
     if !atty::is(atty::Stream::Stdout) {
         return Ok(());
     }
@@ -333,8 +410,8 @@ pub fn run(filename: &str) -> Result<()> {
     if let Err(err) = res {
         eprintln!("Error: {}", err);
     } else if app.dirty {
-        let policy = app.to_policy_tree();
-        let json = serde_json::to_string_pretty(&policy)?;
+        let trees = app.to_policy_trees();
+        let json = serde_json::to_string_pretty(&trees)?;
         fs::write(&app.filename, json)
             .with_context(|| format!("Failed to write file: {}", app.filename))?;
         eprintln!("Updated: {}", app.filename);

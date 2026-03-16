@@ -14,9 +14,6 @@ use crate::common::{Access, PolicyNode, PolicyTree};
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FileAccess {
     pub path: String,
-    pub read: bool,
-    pub write: bool,
-    pub execute: bool,
 }
 
 pub fn run(cmd: &[String], output: Option<&str>) -> Result<()> {
@@ -32,8 +29,23 @@ pub fn run(cmd: &[String], output: Option<&str>) -> Result<()> {
     let file_accesses = trace_command(binary, args)?;
     eprintln!("Found {} file accesses", file_accesses.len());
 
-    let tree = files_to_tree(file_accesses);
-    let trees: Vec<PolicyTree> = vec![tree];
+    // Split into absolute and relative paths
+    let mut absolute_files = Vec::new();
+    let mut relative_files = Vec::new();
+
+    for fa in &file_accesses {
+        if fa.path.starts_with('/') {
+            absolute_files.push(fa.clone());
+        } else {
+            relative_files.push(fa.clone());
+        }
+    }
+
+    let trees: Vec<PolicyTree> = vec![
+        files_to_tree(absolute_files),
+        files_to_tree_relative(relative_files),
+    ];
+
     let json = serde_json::to_string_pretty(&trees)?;
 
     if let Some(output_path) = output {
@@ -49,6 +61,9 @@ pub fn run(cmd: &[String], output: Option<&str>) -> Result<()> {
 fn files_to_tree(files: Vec<FileAccess>) -> PolicyTree {
     use std::collections::HashMap;
 
+    let file_map: std::collections::BTreeMap<String, FileAccess> =
+        files.into_iter().map(|f| (f.path.clone(), f)).collect();
+
     #[derive(Clone)]
     struct TreeNode {
         path: String,
@@ -60,12 +75,11 @@ fn files_to_tree(files: Vec<FileAccess>) -> PolicyTree {
         children: HashMap::new(),
     };
 
-    for file in &files {
+    for file in file_map.values() {
         let parts: Vec<&str> = file.path.split('/').filter(|s| !s.is_empty()).collect();
         let mut current = &mut root;
 
-        for (i, part) in parts.iter().enumerate() {
-            let _is_last = i == parts.len() - 1;
+        for part in parts.iter() {
             let child_path = if current.path == "/" {
                 format!("/{}", part)
             } else {
@@ -86,24 +100,34 @@ fn files_to_tree(files: Vec<FileAccess>) -> PolicyTree {
         }
     }
 
-    fn build_policy_tree(node: &TreeNode) -> Vec<PolicyNode> {
+    fn build_policy_tree(
+        node: &TreeNode,
+        file_map: &std::collections::BTreeMap<String, FileAccess>,
+    ) -> Vec<PolicyNode> {
         let mut result = Vec::new();
 
         if node.children.is_empty() {
+            let access = file_map
+                .get(&node.path)
+                .map(|_fa| Access::Deny)
+                .unwrap_or(Access::Deny);
             return vec![PolicyNode {
                 path: node.path.clone(),
-                access: Access::ReadOnly,
+                access,
                 children: vec![],
             }];
         }
 
-        let children: Vec<PolicyNode> =
-            node.children.values().flat_map(build_policy_tree).collect();
+        let children: Vec<PolicyNode> = node
+            .children
+            .values()
+            .flat_map(|c| build_policy_tree(c, file_map))
+            .collect();
 
         if !children.is_empty() {
             result.push(PolicyNode {
                 path: node.path.clone(),
-                access: Access::ReadOnly,
+                access: Access::Deny,
                 children,
             });
         }
@@ -111,7 +135,93 @@ fn files_to_tree(files: Vec<FileAccess>) -> PolicyTree {
         result
     }
 
-    let entries = build_policy_tree(&root);
+    let entries = build_policy_tree(&root, &file_map);
+
+    PolicyTree { entries }
+}
+
+fn files_to_tree_relative(files: Vec<FileAccess>) -> PolicyTree {
+    use std::collections::HashMap;
+    use std::env;
+
+    let cwd = env::current_dir().unwrap_or_default();
+    let cwd_str = cwd.to_string_lossy().to_string();
+
+    let file_map: std::collections::BTreeMap<String, FileAccess> =
+        files.iter().map(|f| (f.path.clone(), f.clone())).collect();
+
+    #[derive(Clone)]
+    struct TreeNode {
+        path: String,
+        children: HashMap<String, TreeNode>,
+    }
+
+    let mut root = TreeNode {
+        path: cwd_str.clone(),
+        children: HashMap::new(),
+    };
+
+    for file in file_map.values() {
+        let parts: Vec<&str> = file.path.split('/').filter(|s| !s.is_empty()).collect();
+        let mut current = &mut root;
+
+        for part in parts.iter() {
+            let child_path = if current.path == cwd_str {
+                format!("{}/{}", cwd_str, part)
+            } else {
+                format!("{}/{}", current.path, part)
+            };
+
+            if !current.children.contains_key(*part) {
+                current.children.insert(
+                    part.to_string(),
+                    TreeNode {
+                        path: child_path,
+                        children: HashMap::new(),
+                    },
+                );
+            }
+
+            current = current.children.get_mut(*part).unwrap();
+        }
+    }
+
+    fn build_policy_tree(
+        node: &TreeNode,
+        file_map: &std::collections::BTreeMap<String, FileAccess>,
+    ) -> Vec<PolicyNode> {
+        let mut result = Vec::new();
+
+        if node.children.is_empty() {
+            let access = file_map
+                .get(&node.path)
+                .map(|_fa| Access::Deny)
+                .unwrap_or(Access::Deny);
+            return vec![PolicyNode {
+                path: node.path.clone(),
+                access,
+                children: vec![],
+            }];
+        }
+
+        let children: Vec<PolicyNode> = node
+            .children
+            .values()
+            .flat_map(|c| build_policy_tree(c, file_map))
+            .collect();
+
+        if !children.is_empty() {
+            result.push(PolicyNode {
+                path: node.path.clone(),
+                access: Access::Deny,
+                children,
+            });
+        }
+
+        result
+    }
+
+    let entries = build_policy_tree(&root, &file_map);
 
     PolicyTree { entries }
 }
@@ -145,20 +255,26 @@ fn trace_child(
     file_map: &mut BTreeMap<String, FileAccess>,
     syscall_count: &mut usize,
 ) -> Result<()> {
-    match waitpid(child, None)? {
+    // Wait for initial stop
+    let status = waitpid(child, None)?;
+
+    match status {
+        WaitStatus::Stopped(_, Signal::SIGTRAP) => {}
         WaitStatus::Stopped(_, Signal::SIGSTOP) => {}
         WaitStatus::Exited(_, _) | WaitStatus::Signaled(_, _, _) => return Ok(()),
-        _ => {}
+        _ => {
+            return Ok(());
+        }
     }
 
+    // Set options before continuing - only trace the exec'd process
     ptrace::setoptions(
         child,
-        nix::sys::ptrace::Options::PTRACE_O_TRACEFORK
-            | nix::sys::ptrace::Options::PTRACE_O_TRACEVFORK
-            | nix::sys::ptrace::Options::PTRACE_O_TRACECLONE
-            | nix::sys::ptrace::Options::PTRACE_O_TRACEEXEC,
+        nix::sys::ptrace::Options::PTRACE_O_TRACEEXEC
+            | nix::sys::ptrace::Options::PTRACE_O_TRACECLONE,
     )?;
 
+    // Continue and wait for exec
     ptrace::syscall(child, None)?;
 
     loop {
@@ -167,29 +283,28 @@ fn trace_child(
         match status {
             WaitStatus::Stopped(_, Signal::SIGTRAP) => {
                 if let Ok(regs) = ptrace::getregs(child) {
-                    *syscall_count += 1;
                     let syscall_num = regs.orig_rax as i64;
 
-                    match syscall_num {
-                        sysnum::SYS_openat | sysnum::SYS_openat2 => {
-                            let path = read_string(child, regs.rsi as *mut c_void);
-                            if let Some(path) = path {
-                                if let Some(path) = filter_path(&path) {
-                                    let flags = regs.rdx as u32;
-                                    update_file_access(file_map, &path, flags);
-                                }
+                    if syscall_num == sysnum::SYS_openat || syscall_num == sysnum::SYS_openat2 {
+                        *syscall_count += 1;
+                        let path = read_string(child, regs.rsi as *mut c_void);
+                        if let Some(path) = path {
+                            if let Some(path) = filter_path(&path) {
+                                file_map.entry(path.to_string()).or_insert(FileAccess {
+                                    path: path.to_string(),
+                                });
                             }
                         }
-                        sysnum::SYS_open => {
-                            let path = read_string(child, regs.rdi as *mut c_void);
-                            if let Some(path) = path {
-                                if let Some(path) = filter_path(&path) {
-                                    let flags = regs.rsi as u32;
-                                    update_file_access(file_map, &path, flags);
-                                }
+                    } else if syscall_num == sysnum::SYS_open {
+                        *syscall_count += 1;
+                        let path = read_string(child, regs.rdi as *mut c_void);
+                        if let Some(path) = path {
+                            if let Some(path) = filter_path(&path) {
+                                file_map.entry(path.to_string()).or_insert(FileAccess {
+                                    path: path.to_string(),
+                                });
                             }
                         }
-                        _ => {}
                     }
                 }
                 ptrace::syscall(child, None)?;
@@ -248,13 +363,7 @@ fn filter_path(path: &str) -> Option<String> {
         return None;
     }
 
-    let skip_prefixes = [
-        "/proc/self/",
-        "/proc/thread-self/",
-        "/dev/pts/",
-        "/usr/lib/locale/",
-        "/usr/share/locale/",
-    ];
+    let skip_prefixes: [&str; 0] = [];
 
     for prefix in skip_prefixes {
         if path.starts_with(prefix) {
@@ -265,29 +374,45 @@ fn filter_path(path: &str) -> Option<String> {
     if path.starts_with('/') {
         Some(path.to_string())
     } else {
-        None
+        // Also capture relative paths
+        Some(path.to_string())
     }
 }
 
-fn update_file_access(file_map: &mut BTreeMap<String, FileAccess>, path: &str, flags: u32) {
-    let read = (flags & 0x3) != 1;
-    let write = (flags & 0x2) != 0 || (flags & 0x40) != 0 || (flags & 0x200) != 0;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let entry = file_map.entry(path.to_string()).or_insert(FileAccess {
-        path: path.to_string(),
-        read: false,
-        write: false,
-        execute: false,
-    });
-
-    if read {
-        entry.read = true;
+    #[test]
+    fn test_file_access_sort() {
+        let mut files = vec![
+            FileAccess {
+                path: "/b".to_string(),
+            },
+            FileAccess {
+                path: "/a".to_string(),
+            },
+        ];
+        files.sort();
+        assert_eq!(files[0].path, "/a");
+        assert_eq!(files[1].path, "/b");
     }
-    if write {
-        entry.write = true;
+
+    #[test]
+    fn test_filter_path_absolute() {
+        let result = filter_path("/absolute/path");
+        assert_eq!(result, Some("/absolute/path".to_string()));
     }
 
-    if !entry.read && !entry.write {
-        entry.read = true;
+    #[test]
+    fn test_filter_path_relative() {
+        let result = filter_path("relative/path");
+        assert_eq!(result, Some("relative/path".to_string()));
+    }
+
+    #[test]
+    fn test_filter_path_empty() {
+        let result = filter_path("");
+        assert_eq!(result, None);
     }
 }

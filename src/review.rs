@@ -82,4 +82,69 @@ mod tests {
         set_node_access(&mut tree, "/etc/passwd", Access::ReadWrite);
         assert_eq!(tree.entries[0].children[0].access, Access::ReadWrite);
     }
+
+    #[test]
+    fn test_set_node_access_root() {
+        let mut tree = PolicyTree {
+            entries: vec![PolicyNode {
+                path: "/".to_string(),
+                access: Access::Deny,
+                children: vec![],
+            }],
+        };
+
+        set_node_access(&mut tree, "/", Access::ReadOnly);
+        assert_eq!(tree.entries[0].access, Access::ReadOnly);
+    }
+
+    #[test]
+    fn test_set_node_access_nested() {
+        let mut tree = PolicyTree {
+            entries: vec![PolicyNode {
+                path: "/".to_string(),
+                access: Access::Deny,
+                children: vec![PolicyNode {
+                    path: "/bin".to_string(),
+                    access: Access::ReadOnly,
+                    children: vec![PolicyNode {
+                        path: "/bin/ls".to_string(),
+                        access: Access::ReadOnly,
+                        children: vec![],
+                    }],
+                }],
+            }],
+        };
+
+        set_node_access(&mut tree, "/bin/ls", Access::Tmpfs);
+        let ls_node = &tree.entries[0].children[0].children[0];
+        assert_eq!(ls_node.access, Access::Tmpfs);
+    }
+
+    #[test]
+    fn test_set_node_access_multiple_paths() {
+        let mut tree = PolicyTree {
+            entries: vec![PolicyNode {
+                path: "/etc".to_string(),
+                access: Access::ReadOnly,
+                children: vec![
+                    PolicyNode {
+                        path: "/etc/passwd".to_string(),
+                        access: Access::ReadOnly,
+                        children: vec![],
+                    },
+                    PolicyNode {
+                        path: "/etc/shadow".to_string(),
+                        access: Access::ReadOnly,
+                        children: vec![],
+                    },
+                ],
+            }],
+        };
+
+        set_node_access(&mut tree, "/etc/passwd", Access::ReadWrite);
+        set_node_access(&mut tree, "/etc/shadow", Access::Deny);
+
+        assert_eq!(tree.entries[0].children[0].access, Access::ReadWrite);
+        assert_eq!(tree.entries[0].children[1].access, Access::Deny);
+    }
 }

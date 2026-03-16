@@ -282,4 +282,65 @@ mod tests {
         let tree = entries_to_tree(&entries);
         assert!(!tree.is_empty());
     }
+
+    #[test]
+    fn test_empty_entries() {
+        let entries: Vec<PolicyEntry> = vec![];
+        let tree = entries_to_tree(&entries);
+        assert!(tree.is_empty());
+    }
+
+    #[test]
+    fn test_single_entry() {
+        let entries = vec![make_entry("/test", Access::ReadOnly)];
+        let tree = entries_to_tree(&entries);
+        assert_eq!(tree.len(), 1);
+    }
+
+    #[test]
+    fn test_deny_entries_skipped() {
+        let entries = vec![
+            make_entry("/a", Access::Deny),
+            make_entry("/b", Access::ReadOnly),
+        ];
+        let tree = entries_to_tree(&entries);
+        assert!(!tree.is_empty());
+    }
+
+    #[test]
+    fn test_deeply_nested_paths() {
+        let entries = vec![make_entry("/a/b/c/d/e", Access::ReadOnly)];
+        let tree = entries_to_tree(&entries);
+        assert!(!tree.is_empty());
+    }
+
+    #[test]
+    fn test_multiple_trees() {
+        let entries = vec![
+            make_entry("/a", Access::ReadOnly),
+            make_entry("/b", Access::ReadOnly),
+        ];
+        let tree = entries_to_tree(&entries);
+        assert_eq!(tree.len(), 2);
+    }
+
+    #[test]
+    fn test_optimise_tree_empty() {
+        let tree = PolicyTree { entries: vec![] };
+        let result = optimise_tree(tree);
+        assert!(result.entries.is_empty());
+    }
+
+    #[test]
+    fn test_optimise_tree_single_entry() {
+        let tree = PolicyTree {
+            entries: vec![PolicyNode {
+                path: "/test".to_string(),
+                access: Access::ReadOnly,
+                children: vec![],
+            }],
+        };
+        let result = optimise_tree(tree);
+        assert!(!result.entries.is_empty());
+    }
 }
