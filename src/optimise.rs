@@ -15,7 +15,11 @@ pub fn run(file: &str) -> Result<()> {
 
     let trees: Vec<PolicyTree> = serde_json::from_str(&data).context("Failed to parse JSON")?;
 
-    let optimised: Vec<PolicyTree> = trees.into_iter().map(optimise_tree).collect();
+    let optimised: Vec<PolicyTree> = trees
+        .into_iter()
+        .map(optimise_tree)
+        .filter(|t| !t.entries.is_empty())
+        .collect();
 
     let json = serde_json::to_string_pretty(&optimised)?;
     fs::write(file, json).with_context(|| format!("Failed to write file: {}", file))?;
@@ -29,7 +33,74 @@ pub fn optimise_tree(tree: PolicyTree) -> PolicyTree {
 
     let deduped = entries_to_tree(&entries);
 
-    PolicyTree { entries: deduped }
+    let flattened = flatten_containers(&deduped);
+
+    // Sort by path
+    let mut sorted = flattened;
+    sort_nodes(&mut sorted);
+
+    PolicyTree { entries: sorted }
+}
+
+fn sort_nodes(nodes: &mut [PolicyNode]) {
+    nodes.sort_by(|a, b| a.path.cmp(&b.path));
+    for node in nodes.iter_mut() {
+        sort_nodes(&mut node.children);
+    }
+}
+
+fn flatten_containers(nodes: &[PolicyNode]) -> Vec<PolicyNode> {
+    nodes.iter().filter_map(flatten_node).collect()
+}
+
+fn flatten_node(node: &PolicyNode) -> Option<PolicyNode> {
+    if node.children.is_empty() {
+        return Some(node.clone());
+    }
+
+    // Recursively flatten children
+    let flattened_children: Vec<PolicyNode> =
+        node.children.iter().filter_map(flatten_node).collect();
+
+    if flattened_children.is_empty() {
+        return None;
+    }
+
+    // If this node's access is Deny (the default) and all children have
+    // different access, we can skip this intermediate node
+    if node.access == Access::Deny {
+        return Some(PolicyNode {
+            path: node.path.clone(),
+            access: node.access.clone(),
+            children: flattened_children,
+        });
+    }
+
+    // If node has non-Deny access (like Tmpfs) and has children,
+    // check if all children are just intermediate containers
+    // If so, promote the deepest children to be direct children
+    let all_containers = flattened_children
+        .iter()
+        .all(|c| c.access == node.access && !c.children.is_empty());
+
+    if all_containers && !flattened_children.is_empty() {
+        // Flatten: collect all grandchildren as direct children
+        let mut new_children = Vec::new();
+        for child in flattened_children {
+            new_children.extend(child.children);
+        }
+        return Some(PolicyNode {
+            path: node.path.clone(),
+            access: node.access.clone(),
+            children: new_children,
+        });
+    }
+
+    Some(PolicyNode {
+        path: node.path.clone(),
+        access: node.access.clone(),
+        children: flattened_children,
+    })
 }
 
 fn node_to_entries(node: &PolicyNode) -> Vec<PolicyEntry> {

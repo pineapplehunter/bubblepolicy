@@ -1,13 +1,7 @@
 use color_eyre::{eyre::bail, Result};
-use nix::sys::ptrace;
-use nix::sys::signal::Signal;
-use nix::sys::wait::{waitpid, WaitStatus};
-use nix::unistd::{fork, ForkResult, Pid};
 use std::collections::BTreeMap;
-use std::ffi::c_void;
 use std::fs;
-use std::os::unix::process::CommandExt;
-use syscall_numbers::native as sysnum;
+use std::process::Command;
 
 use crate::common::{Access, PolicyNode, PolicyTree};
 
@@ -228,21 +222,29 @@ fn files_to_tree_relative(files: Vec<FileAccess>) -> PolicyTree {
 
 fn trace_command(binary: &str, args: &[String]) -> Result<Vec<FileAccess>> {
     let mut file_map: BTreeMap<String, FileAccess> = BTreeMap::new();
-    let mut syscall_count: usize = 0;
 
-    let pid = unsafe { fork() }?;
+    // Build the command: strace -e trace=open,openat,openat2 -f -o /dev/stdout -- <binary> <args>
+    let mut cmd = Command::new("strace");
+    cmd.arg("-e").arg("trace=open,openat,openat2");
+    cmd.arg("-f");
+    cmd.arg("-o").arg("/dev/stdout");
+    cmd.arg("--");
+    cmd.arg(binary);
+    cmd.args(args);
 
-    match pid {
-        ForkResult::Parent { child } => {
-            trace_child(child, &mut file_map, &mut syscall_count)?;
-        }
-        ForkResult::Child => {
-            ptrace::traceme()?;
-            let _ = std::process::Command::new(binary).args(args).exec();
+    let output = cmd.output()?;
+
+    // Parse strace output - it goes to stdout when using -o /dev/stdout
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines() {
+        // strace output format: <pid> openat(AT_FDCWD, "/path/to/file", O_RDONLY) = 3
+        // or: <pid> open("/path/to/file", O_RDONLY) = 3
+        if let Some(path) = parse_strace_line(line) {
+            if let Some(p) = filter_path(&path) {
+                file_map.entry(p.clone()).or_insert(FileAccess { path: p });
+            }
         }
     }
-
-    eprintln!("Syscalls caught: {}", syscall_count);
 
     let mut files: Vec<FileAccess> = file_map.into_values().collect();
     files.sort();
@@ -250,111 +252,36 @@ fn trace_command(binary: &str, args: &[String]) -> Result<Vec<FileAccess>> {
     Ok(files)
 }
 
-fn trace_child(
-    child: Pid,
-    file_map: &mut BTreeMap<String, FileAccess>,
-    syscall_count: &mut usize,
-) -> Result<()> {
-    // Wait for initial stop
-    let status = waitpid(child, None)?;
-
-    match status {
-        WaitStatus::Stopped(_, Signal::SIGTRAP) => {}
-        WaitStatus::Stopped(_, Signal::SIGSTOP) => {}
-        WaitStatus::Exited(_, _) | WaitStatus::Signaled(_, _, _) => return Ok(()),
-        _ => {
-            return Ok(());
+fn parse_strace_line(line: &str) -> Option<String> {
+    // Match openat(AT_FDCWD, "/path", ...) or open("/path", ...)
+    if let Some(at_fdcwd_pos) = line.find("AT_FDCWD") {
+        // openat format: openat(AT_FDCWD, "/path", ...)
+        if let Some(quote_start) = line[at_fdcwd_pos..].find('"') {
+            let rest = &line[at_fdcwd_pos + quote_start + 1..];
+            if let Some(quote_end) = rest.find('"') {
+                let path = &rest[..quote_end];
+                return Some(path.to_string());
+            }
         }
-    }
-
-    // Set options before continuing - only trace the exec'd process
-    ptrace::setoptions(
-        child,
-        nix::sys::ptrace::Options::PTRACE_O_TRACEEXEC
-            | nix::sys::ptrace::Options::PTRACE_O_TRACECLONE,
-    )?;
-
-    // Continue and wait for exec
-    ptrace::syscall(child, None)?;
-
-    loop {
-        let status = waitpid(child, None)?;
-
-        match status {
-            WaitStatus::Stopped(_, Signal::SIGTRAP) => {
-                if let Ok(regs) = ptrace::getregs(child) {
-                    let syscall_num = regs.orig_rax as i64;
-
-                    if syscall_num == sysnum::SYS_openat || syscall_num == sysnum::SYS_openat2 {
-                        *syscall_count += 1;
-                        let path = read_string(child, regs.rsi as *mut c_void);
-                        if let Some(path) = path {
-                            if let Some(path) = filter_path(&path) {
-                                file_map.entry(path.to_string()).or_insert(FileAccess {
-                                    path: path.to_string(),
-                                });
-                            }
-                        }
-                    } else if syscall_num == sysnum::SYS_open {
-                        *syscall_count += 1;
-                        let path = read_string(child, regs.rdi as *mut c_void);
-                        if let Some(path) = path {
-                            if let Some(path) = filter_path(&path) {
-                                file_map.entry(path.to_string()).or_insert(FileAccess {
-                                    path: path.to_string(),
-                                });
-                            }
-                        }
-                    }
-                }
-                ptrace::syscall(child, None)?;
+    } else if let Some(open_pos) = line.find("open(") {
+        // open format: open("/path", ...)
+        if let Some(quote_start) = line[open_pos..].find('"') {
+            let rest = &line[open_pos + quote_start + 1..];
+            if let Some(quote_end) = rest.find('"') {
+                let path = &rest[..quote_end];
+                return Some(path.to_string());
             }
-            WaitStatus::Stopped(_, Signal::SIGSTOP) => {
-                ptrace::syscall(child, None)?;
-            }
-            WaitStatus::Exited(_, code) => {
-                eprintln!("Child exited with code: {}", code);
-                break;
-            }
-            WaitStatus::Signaled(_, sig, _) => {
-                eprintln!("Child killed by signal: {:?}", sig);
-                break;
-            }
-            WaitStatus::PtraceEvent(_, _, _) => {
-                ptrace::syscall(child, None)?;
-            }
-            _ => {
-                ptrace::syscall(child, None)?;
+        }
+    } else if let Some(openat_pos) = line.find("openat(") {
+        // openat format without AT_FDCWD: openat("/path", ...)
+        if let Some(quote_start) = line[openat_pos..].find('"') {
+            let rest = &line[openat_pos + quote_start + 1..];
+            if let Some(quote_end) = rest.find('"') {
+                let path = &rest[..quote_end];
+                return Some(path.to_string());
             }
         }
     }
-
-    Ok(())
-}
-
-fn read_string(pid: Pid, addr: *mut c_void) -> Option<String> {
-    if addr.is_null() {
-        return None;
-    }
-
-    let mut data = [0u8; 256];
-
-    for offset in (0..256).step_by(std::mem::size_of::<usize>()) {
-        let read_addr = unsafe { addr.byte_add(offset) };
-        match ptrace::read(pid, read_addr) {
-            Ok(val) => {
-                for i in 0..std::mem::size_of::<usize>() {
-                    let byte = (val >> (i * 8)) as u8;
-                    data[offset + i] = byte;
-                    if byte == 0 {
-                        return Some(String::from_utf8_lossy(&data[..offset + i]).to_string());
-                    }
-                }
-            }
-            Err(_) => return None,
-        }
-    }
-
     None
 }
 
@@ -362,21 +289,7 @@ fn filter_path(path: &str) -> Option<String> {
     if path.is_empty() {
         return None;
     }
-
-    let skip_prefixes: [&str; 0] = [];
-
-    for prefix in skip_prefixes {
-        if path.starts_with(prefix) {
-            return None;
-        }
-    }
-
-    if path.starts_with('/') {
-        Some(path.to_string())
-    } else {
-        // Also capture relative paths
-        Some(path.to_string())
-    }
+    Some(path.to_string())
 }
 
 #[cfg(test)]
@@ -414,5 +327,23 @@ mod tests {
     fn test_filter_path_empty() {
         let result = filter_path("");
         assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_parse_strace_openat() {
+        let line = "12345 openat(AT_FDCWD, \"/etc/passwd\", O_RDONLY) = 3";
+        assert_eq!(parse_strace_line(line), Some("/etc/passwd".to_string()));
+    }
+
+    #[test]
+    fn test_parse_strace_open() {
+        let line = "12345 open(\"/etc/passwd\", O_RDONLY) = 3";
+        assert_eq!(parse_strace_line(line), Some("/etc/passwd".to_string()));
+    }
+
+    #[test]
+    fn test_parse_strace_openat_no_at_fdcwd() {
+        let line = "12345 openat(\"/etc/passwd\", O_RDONLY) = 3";
+        assert_eq!(parse_strace_line(line), Some("/etc/passwd".to_string()));
     }
 }

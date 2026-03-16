@@ -42,8 +42,6 @@ struct App {
     path: Vec<usize>,
     dirty: bool,
     filename: String,
-    tree_count: usize,
-    current_tree: usize,
 }
 
 impl App {
@@ -58,58 +56,35 @@ impl App {
             children: Vec::new(),
         };
 
-        // Add each tree as a child of the root
-        for (tree_idx, tree) in trees.into_iter().enumerate() {
-            // Create a container node for each tree
-            let tree_label = if tree_idx == 0 {
-                "(abs)".to_string()
-            } else {
-                format!("(rel: {})", tree_idx)
-            };
-
-            let mut tree_node = TreeNode {
-                path: tree_label.clone(),
-                display_name: tree_label,
-                allow_state: AllowState::Partial,
-                expanded: true,
-                level: 1,
-                is_file: false,
-                children: Vec::new(),
-            };
-
+        // Add each tree's entries directly to root
+        for tree in trees.into_iter() {
             for entry in tree.entries {
                 // Handle root entry specially
                 if entry.path == "/" {
                     // Set root's access if it has no children
                     if entry.children.is_empty() {
-                        tree_node.allow_state = match entry.access {
+                        root.allow_state = match entry.access {
                             Access::Deny => AllowState::Deny,
                             Access::ReadOnly => AllowState::RO,
                             Access::ReadWrite => AllowState::RW,
                             Access::Tmpfs => AllowState::Tmp,
                         };
                     }
-                    // Add root's children as children of tree node
+                    // Add root's children as children of UI root
                     for child in entry.children {
-                        Self::insert_node(&mut tree_node, child);
+                        Self::insert_node(&mut root, child);
                     }
                 } else {
-                    Self::insert_node(&mut tree_node, entry);
+                    Self::insert_node(&mut root, entry);
                 }
             }
-
-            root.children.push(tree_node);
         }
-
-        let tree_count = root.children.len();
 
         App {
             root,
             path: vec![],
             dirty: false,
             filename,
-            tree_count,
-            current_tree: 0,
         }
     }
 
@@ -346,20 +321,15 @@ impl App {
     }
 
     fn to_policy_trees(&self) -> Vec<PolicyTree> {
-        let mut trees = Vec::new();
+        // All entries are directly under root, so return as single tree
+        let entries: Vec<PolicyNode> = self
+            .root
+            .children
+            .iter()
+            .map(|child| self.node_to_policy_node(child))
+            .collect();
 
-        // Each child of root is a tree (marked with (abs), (rel: 1), etc.)
-        for child in &self.root.children {
-            let entries = vec![self.node_to_policy_node(child)];
-            trees.push(PolicyTree { entries });
-        }
-
-        // If no trees (shouldn't happen), return empty
-        if trees.is_empty() {
-            trees.push(PolicyTree { entries: vec![] });
-        }
-
-        trees
+        vec![PolicyTree { entries }]
     }
 
     fn node_to_policy_node(&self, node: &TreeNode) -> PolicyNode {
