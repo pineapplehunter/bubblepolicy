@@ -25,14 +25,12 @@ enum AllowState {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 struct TreeNode {
     path: String,
     display_name: String,
     allow_state: AllowState,
     expanded: bool,
     level: usize,
-    is_file: bool,
     children: Vec<TreeNode>,
 }
 
@@ -52,7 +50,6 @@ impl App {
             allow_state: AllowState::Partial,
             expanded: true,
             level: 0,
-            is_file: false,
             children: Vec::new(),
         };
 
@@ -90,7 +87,6 @@ impl App {
 
     #[allow(clippy::double_ended_iterator_last)]
     fn insert_node(parent: &mut TreeNode, node: PolicyNode) {
-        let is_file = node.children.is_empty();
         let display_name = node.path.split('/').next_back().unwrap_or("/").to_string();
         let child_path = node.path.clone();
 
@@ -107,7 +103,6 @@ impl App {
             allow_state,
             expanded: false,
             level: parent.level + 1,
-            is_file,
             children: Vec::new(),
         };
 
@@ -215,17 +210,6 @@ impl App {
             node = &node.children[idx];
         }
         Some(node)
-    }
-
-    #[allow(dead_code)]
-    fn get_parent_path(&self) -> Option<Vec<usize>> {
-        if self.path.is_empty() {
-            None
-        } else {
-            let mut parent = self.path.clone();
-            parent.pop();
-            Some(parent)
-        }
     }
 
     fn toggle_expanded(&mut self) {

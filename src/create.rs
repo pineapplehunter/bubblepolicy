@@ -108,18 +108,15 @@ fn dedup_entries(entries: &[PolicyEntry]) -> Vec<PolicyEntry> {
     use std::collections::HashMap;
 
     #[derive(Clone)]
-    #[allow(dead_code)]
     struct TreeNode {
         path: String,
         access: Option<Access>,
-        is_leaf: bool,
         children: HashMap<String, TreeNode>,
     }
 
     let mut root = TreeNode {
         path: "/".to_string(),
         access: None,
-        is_leaf: false,
         children: HashMap::new(),
     };
 
@@ -152,7 +149,6 @@ fn dedup_entries(entries: &[PolicyEntry]) -> Vec<PolicyEntry> {
                     TreeNode {
                         path: child_path,
                         access: None,
-                        is_leaf: is_last,
                         children: HashMap::new(),
                     },
                 );
