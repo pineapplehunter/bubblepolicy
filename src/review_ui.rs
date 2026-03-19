@@ -1,11 +1,13 @@
-use color_eyre::{eyre::WrapErr, Result};
-use crossterm::{
-    event::{self, Event, KeyCode},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-};
+use color_eyre::{Result, eyre::WrapErr};
 use ratatui::{
     backend::CrosstermBackend,
+    crossterm::{
+        self,
+        event::{self, Event, KeyCode},
+        execute,
+        terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+        tty::IsTty,
+    },
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     widgets::{Block, Borders, List, ListItem, Paragraph},
@@ -345,7 +347,7 @@ pub fn run(filename: &str) -> Result<()> {
 
     let mut app = App::from_policy_trees(trees, filename.to_string());
 
-    if !atty::is(atty::Stream::Stdout) {
+    if !std::io::stdout().is_tty() {
         return Ok(());
     }
 

@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use color_eyre::{eyre::bail, Result};
+use color_eyre::{Result, eyre::bail};
 
 #[derive(Parser)]
 #[command(name = "bubblepolicy")]
@@ -21,7 +21,6 @@ enum Commands {
         cmd: Vec<String>,
     },
     /// Review traced paths in TUI and toggle allow/deny
-    #[cfg(feature = "ui")]
     #[command(name = "review-ui")]
     ReviewUi {
         /// Input/output file (required)
@@ -79,7 +78,6 @@ fn main() -> Result<()> {
             };
             bubblepolicy::trace::run(&cmd, output)?;
         }
-        #[cfg(feature = "ui")]
         Commands::ReviewUi { file } => {
             bubblepolicy::review_ui::run(&file)?;
         }

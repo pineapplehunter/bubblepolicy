@@ -1,6 +1,6 @@
 use color_eyre::{
-    eyre::{bail, WrapErr},
     Result,
+    eyre::{WrapErr, bail},
 };
 use std::fs;
 use std::path::Path;

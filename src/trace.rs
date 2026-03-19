@@ -1,4 +1,4 @@
-use color_eyre::{eyre::bail, Result};
+use color_eyre::{Result, eyre::bail};
 use std::collections::BTreeMap;
 use std::fs;
 use std::process::Command;

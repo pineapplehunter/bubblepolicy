@@ -1,4 +1,4 @@
-use color_eyre::{eyre::WrapErr, Result};
+use color_eyre::{Result, eyre::WrapErr};
 use std::fs;
 
 use crate::common::{Access, PolicyNode, PolicyTree};
