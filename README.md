@@ -4,7 +4,7 @@ A Rust CLI tool for configuring bubblewrap sandboxes using an SELinux-style work
 
 ## AI Disclosure
 
-bubblepolicy was developed with AI assistance. This tool helps create sandboxed environments using bubblewrap, and was built using modern AI coding tools to accelerate development while maintaining human oversight and review.
+bubblepolicy was developed with AI assistance using opencode. This tool helps create sandboxed environments using bubblewrap, and was built using modern AI coding tools to accelerate development while maintaining human oversight and review.
 
 ## Installation
 
