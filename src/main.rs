@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
-use color_eyre::{Result, eyre::bail};
+use color_eyre::{eyre::bail, Result};
+use log::info;
 
 #[derive(Parser)]
 #[command(name = "bubblepolicy")]
@@ -66,8 +67,9 @@ fn main() -> Result<()> {
     color_eyre::install()?;
     let cli = Cli::parse();
 
-    match cli.command {
+    match &cli.command {
         Commands::Trace { output, cmd } => {
+            env_logger::init();
             if cmd.is_empty() {
                 bail!("Error: command required. Usage: bubblepolicy trace <output> -- <command>");
             }
@@ -76,10 +78,11 @@ fn main() -> Result<()> {
             } else {
                 Some(output.as_str())
             };
-            bubblepolicy::trace::run(&cmd, output)?;
+            info!("Tracing: {} {:?}", cmd[0], &cmd[1..]);
+            bubblepolicy::trace::run(cmd, output)?;
         }
         Commands::ReviewUi { file } => {
-            bubblepolicy::review_ui::run(&file)?;
+            bubblepolicy::review_ui::run(file)?;
         }
         Commands::Review {
             file,
@@ -88,13 +91,22 @@ fn main() -> Result<()> {
             tmp,
             deny,
         } => {
-            bubblepolicy::review::run(&file, &ro, &rw, &tmp, &deny)?;
+            env_logger::init();
+            info!("Reviewing policy: {}", file);
+            bubblepolicy::review::run(file, ro, rw, tmp, deny)?;
         }
         Commands::Optimise { file } => {
-            bubblepolicy::optimise::run(&file)?;
+            env_logger::init();
+            info!("Optimising policy: {}", file);
+            bubblepolicy::optimise::run(file)?;
         }
         Commands::Create { policy, binary } => {
-            bubblepolicy::create::run(&policy, &binary)?;
+            env_logger::init();
+            info!(
+                "Creating bubblewrap wrapper: policy={}, binary={}",
+                policy, binary
+            );
+            bubblepolicy::create::run(policy, binary)?;
         }
     }
 

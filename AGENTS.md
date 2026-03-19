@@ -8,31 +8,27 @@ A Rust CLI tool for configuring bubblewrap sandboxes with SELinux-style workflow
 src/
 ├── main.rs        # CLI entry point with clap
 ├── lib.rs         # Library exports
-├── common.rs      # Shared types: Access, PolicyNode, PolicyTree
+├── common.rs      # Shared types: Access, PolicyEntry, parsing utilities
 ├── trace.rs       # Trace subcommand (uses external strace)
-├── review.rs      # Review subcommand (CLI tree manipulation)
+├── review.rs      # Review subcommand (CLI manipulation)
 ├── review_ui.rs   # Review subcommand (TUI file tree toggler)
-├── optimise.rs    # Optimize subcommand (tree dedup/compression)
+├── optimise.rs    # Optimize subcommand (dedup paths)
 ├── create.rs      # Create subcommand (bubblewrap wrapper generator)
 └── template.sh    # Shell script template for create output
 ```
 
 ## Data Model
 
-```json
-[
-  {
-    "entries": [
-      {"path": "/", "access": "ReadOnly", "children": [...]}
-    ]
-  }
-]
+Policy format is a simple TSV-like format with one entry per line:
+```
+ReadOnly /etc/passwd
+ReadWrite /tmp/file
+Tmpfs /tmp
 ```
 
-- Output is a list of trees (absolute paths + relative paths)
-- Only non-deny entries are in the tree (deny is implicit)
-- Children inherit parent access unless explicitly overridden
 - Access enum: `Deny`, `ReadOnly`, `ReadWrite`, `Tmpfs`
+- Trees are constructed internally when needed for deduplication
+- The `dedup_entries` function collapses paths with identical access into parent directories
 
 ## Build/Lint/Test Commands
 
@@ -80,7 +76,7 @@ use color_eyre::{Result, eyre::{WrapErr, bail}};
 use std::fs;
 use std::path::Path;
 
-use crate::common::{Access, PolicyNode, PolicyTree};
+use crate::common::{Access, PolicyEntry};
 ```
 
 ### Error Handling
@@ -106,7 +102,7 @@ fn main() -> Result<()> {
 - Use descriptive names: `is_tmpfs` not `check_tmpfs`, `is_allowed` not `check`
 
 ```rust
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Access {
     Deny,
     ReadOnly,
@@ -120,12 +116,10 @@ impl Access {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PolicyNode {
+#[derive(Debug, Clone)]
+pub struct PolicyEntry {
     pub path: String,
     pub access: Access,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub children: Vec<PolicyNode>,
 }
 ```
 
@@ -180,6 +174,6 @@ cargo add <package> --vers 1.0 # Add specific version
 
 - `clap`: CLI parsing with derive macros
 - `color-eyre`: Error handling with colored reports
-- `serde`/`serde_json`: Serialization
 - `ratatui`: TUI for review-ui
 - `crossterm`: Terminal support (via ratatui)
+- `log`/`env_logger`: Logging

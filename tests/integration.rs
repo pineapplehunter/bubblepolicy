@@ -7,55 +7,15 @@ fn get_bin_path() -> String {
     format!("{}/target/debug/bubblepolicy", manifest_dir)
 }
 
-fn setup_policy_with_ro(
-    policy_path: &str,
-    paths_to_allow: &[&str],
-) -> Result<(), Box<dyn std::error::Error>> {
-    let data = fs::read_to_string(policy_path)?;
-    let mut trees: Vec<serde_json::Value> = serde_json::from_str(&data)?;
-
-    for tree in &mut trees {
-        if let Some(entries) = tree.get_mut("entries").and_then(|e| e.as_array_mut()) {
-            for entry in entries {
-                modify_entry(entry, paths_to_allow);
-            }
-        }
-    }
-
-    let json = serde_json::to_string_pretty(&trees)?;
-    fs::write(policy_path, json)?;
-    Ok(())
-}
-
-fn modify_entry(entry: &mut serde_json::Value, allowed: &[&str]) -> bool {
-    let mut modified = false;
-    if let Some(path) = entry.get("path").and_then(|p| p.as_str())
-        && allowed.iter().any(|p| path.contains(p))
-    {
-        entry["access"] = serde_json::Value::String("ReadOnly".to_string());
-        modified = true;
-    }
-    if let Some(children) = entry.get_mut("children").and_then(|c| c.as_array_mut()) {
-        for child in children.iter_mut() {
-            if modify_entry(child, allowed) {
-                modified = true;
-            }
-        }
-    }
-    modified
-}
-
 #[test]
 fn test_trace_and_create() {
     let bin_path = get_bin_path();
-    let policy_path = "/tmp/bubblepolicy_integration_test.json";
+    let policy_path = "/tmp/bubblepolicy_integration_test.policy";
     let wrapper_path = "/tmp/bubblepolicy_wrapper_test.sh";
 
-    // Clean up
     let _ = fs::remove_file(policy_path);
     let _ = fs::remove_file(wrapper_path);
 
-    // Run trace
     let output = Command::new(&bin_path)
         .args(["trace", policy_path, "--", "echo", "hello"])
         .output()
@@ -68,10 +28,19 @@ fn test_trace_and_create() {
     );
     assert!(Path::new(policy_path).exists(), "Policy file not created");
 
-    // Modify policy to allow some paths (simulating review-ui)
-    setup_policy_with_ro(policy_path, &["/bin", "/lib"]).expect("Failed to setup policy");
+    let policy_data = fs::read_to_string(policy_path).expect("Failed to read policy");
+    for line in policy_data.lines() {
+        if line.contains("/bin") || line.contains("/lib") {
+            let parts: Vec<&str> = line.splitn(2, ' ').collect();
+            if parts.len() == 2 {
+                let new_line = format!("ReadOnly {}", parts[1]);
+                let policy_data = policy_data.replace(line, &new_line);
+                fs::write(policy_path, policy_data).unwrap();
+                break;
+            }
+        }
+    }
 
-    // Run create
     let output = Command::new(&bin_path)
         .args(["create", policy_path, "echo"])
         .output()
@@ -84,29 +53,26 @@ fn test_trace_and_create() {
     );
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    dbg!(&stdout);
     assert!(
         stdout.contains("#!/bin/bash"),
         "Output should be a bash script"
     );
     assert!(stdout.contains("--ro-bind"), "Should have ro-bind mounts");
 
-    // Verify the script contains expected paths
     let policy_data = fs::read_to_string(policy_path).expect("Failed to read policy");
     assert!(
         policy_data.contains("ReadOnly"),
         "Policy should have ReadOnly entries"
     );
 
-    // Clean up
     let _ = fs::remove_file(policy_path);
     let _ = fs::remove_file(wrapper_path);
 }
 
 #[test]
-fn test_trace_produces_valid_json() {
+fn test_trace_produces_valid_output() {
     let bin_path = get_bin_path();
-    let policy_path = "/tmp/bubblepolicy_test_valid.json";
+    let policy_path = "/tmp/bubblepolicy_test_valid.policy";
 
     let _ = fs::remove_file(policy_path);
 
@@ -118,21 +84,23 @@ fn test_trace_produces_valid_json() {
     assert!(output.status.success());
     assert!(Path::new(policy_path).exists());
 
-    // Verify it's valid JSON with expected structure
     let data = fs::read_to_string(policy_path).expect("Failed to read policy");
-    let trees: Vec<serde_json::Value> = serde_json::from_str(&data).expect("Invalid JSON");
-    assert!(!trees.is_empty());
+    assert!(!data.is_empty());
 
-    // Verify entries have expected fields
-    if let Some(tree) = trees.first()
-        && let Some(entries) = tree.get("entries").and_then(|e| e.as_array())
-    {
-        assert!(!entries.is_empty());
-        if let Some(entry) = entries.first() {
-            assert!(entry.get("path").is_some());
-            assert!(entry.get("access").is_some());
+    let mut has_valid_line = false;
+    for line in data.lines() {
+        let parts: Vec<&str> = line.splitn(2, ' ').collect();
+        if parts.len() == 2
+            && (parts[0] == "ReadOnly"
+                || parts[0] == "ReadWrite"
+                || parts[0] == "Tmpfs"
+                || parts[0] == "Deny")
+        {
+            has_valid_line = true;
+            break;
         }
     }
+    assert!(has_valid_line, "Policy should have valid entries");
 
     let _ = fs::remove_file(policy_path);
 }
@@ -142,7 +110,7 @@ fn test_create_requires_existing_policy() {
     let bin_path = get_bin_path();
 
     let output = Command::new(&bin_path)
-        .args(["create", "/nonexistent/path.json", "echo"])
+        .args(["create", "/nonexistent/path.policy", "echo"])
         .output()
         .expect("Failed to run create");
 
@@ -152,28 +120,11 @@ fn test_create_requires_existing_policy() {
 #[test]
 fn test_create_with_nested_path() {
     let bin_path = get_bin_path();
-    let policy_path = "/tmp/bubblepolicy_test_nested.json";
+    let policy_path = "/tmp/bubblepolicy_test_nested.policy";
 
     let _ = fs::remove_file(policy_path);
 
-    // Create policy with /nix path (simulating trace output without root)
-    let policy = r#"[
-  {
-    "entries": []
-  },
-  {
-    "entries": [
-      {
-        "path": "/nix",
-        "access": "ReadOnly"
-      }
-    ]
-  },
-  {
-    "entries": []
-  }
-]"#;
-
+    let policy = "ReadOnly /nix/store";
     fs::write(policy_path, policy).expect("Failed to write policy");
 
     let output = Command::new(&bin_path)
@@ -185,14 +136,12 @@ fn test_create_with_nested_path() {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    // Should include /nix, not collapse to /
     assert!(
-        stdout.contains("--ro-bind /nix /nix"),
-        "Output should contain --ro-bind /nix /nix, got: {}",
+        stdout.contains("--ro-bind /nix"),
+        "Output should contain --ro-bind /nix, got: {}",
         stdout
     );
 
-    // Should NOT have --ro-bind / / (unless / is explicitly in policy)
     let bind_lines: Vec<&str> = stdout.lines().filter(|l| l.contains("--ro-bind")).collect();
 
     for line in &bind_lines {

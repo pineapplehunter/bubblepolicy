@@ -15,7 +15,7 @@ use ratatui::{
 use std::fs;
 use std::io;
 
-use crate::common::{Access, PolicyNode, PolicyTree};
+use crate::common::{entries_to_string, parse_entries, Access, PolicyEntry};
 
 #[derive(Debug, Clone, PartialEq)]
 enum AllowState {
@@ -36,7 +36,6 @@ struct TreeNode {
     children: Vec<TreeNode>,
 }
 
-#[allow(dead_code)]
 struct App {
     root: TreeNode,
     path: Vec<usize>,
@@ -45,7 +44,7 @@ struct App {
 }
 
 impl App {
-    fn from_policy_trees(trees: Vec<PolicyTree>, filename: String) -> Self {
+    fn from_entries(entries: Vec<PolicyEntry>, filename: String) -> Self {
         let mut root = TreeNode {
             path: "/".to_string(),
             display_name: "/".to_string(),
@@ -55,26 +54,48 @@ impl App {
             children: Vec::new(),
         };
 
-        // Add each tree's entries directly to root
-        for tree in trees.into_iter() {
-            for entry in tree.entries {
-                // Handle root entry specially
-                if entry.path == "/" {
-                    // Set root's access if it has no children
-                    if entry.children.is_empty() {
-                        root.allow_state = match entry.access {
-                            Access::Deny => AllowState::Deny,
-                            Access::ReadOnly => AllowState::RO,
-                            Access::ReadWrite => AllowState::RW,
-                            Access::Tmpfs => AllowState::Tmp,
-                        };
-                    }
-                    // Add root's children as children of UI root
-                    for child in entry.children {
-                        Self::insert_node(&mut root, child);
-                    }
+        for entry in entries {
+            if entry.path == "/" {
+                root.allow_state = match entry.access {
+                    Access::Deny => AllowState::Deny,
+                    Access::ReadOnly => AllowState::RO,
+                    Access::ReadWrite => AllowState::RW,
+                    Access::Tmpfs => AllowState::Tmp,
+                };
+                continue;
+            }
+
+            let mut current = &mut root;
+            let parts: Vec<&str> = entry.path.split('/').filter(|s| !s.is_empty()).collect();
+
+            for (i, part) in parts.iter().enumerate() {
+                let is_last = i == parts.len() - 1;
+                let child_path = format!("{}{}", current.path.trim_end_matches('/'), part);
+
+                let existing_idx = current.children.iter().position(|c| c.path == child_path);
+
+                if let Some(idx) = existing_idx {
+                    current = &mut current.children[idx];
                 } else {
-                    Self::insert_node(&mut root, entry);
+                    let new_node = TreeNode {
+                        path: child_path.clone(),
+                        display_name: part.to_string(),
+                        allow_state: if is_last {
+                            match entry.access {
+                                Access::Deny => AllowState::Deny,
+                                Access::ReadOnly => AllowState::RO,
+                                Access::ReadWrite => AllowState::RW,
+                                Access::Tmpfs => AllowState::Tmp,
+                            }
+                        } else {
+                            AllowState::Partial
+                        },
+                        expanded: false,
+                        level: current.level + 1,
+                        children: Vec::new(),
+                    };
+                    current.children.push(new_node);
+                    current = current.children.last_mut().unwrap();
                 }
             }
         }
@@ -85,34 +106,6 @@ impl App {
             dirty: false,
             filename,
         }
-    }
-
-    #[allow(clippy::double_ended_iterator_last)]
-    fn insert_node(parent: &mut TreeNode, node: PolicyNode) {
-        let display_name = node.path.split('/').next_back().unwrap_or("/").to_string();
-        let child_path = node.path.clone();
-
-        let allow_state = match node.access {
-            Access::Deny => AllowState::Deny,
-            Access::ReadOnly => AllowState::RO,
-            Access::ReadWrite => AllowState::RW,
-            Access::Tmpfs => AllowState::Tmp,
-        };
-
-        let mut new_node = TreeNode {
-            path: child_path,
-            display_name,
-            allow_state,
-            expanded: false,
-            level: parent.level + 1,
-            children: Vec::new(),
-        };
-
-        for child in node.children {
-            Self::insert_node(&mut new_node, child);
-        }
-
-        parent.children.push(new_node);
     }
 
     fn get_node_at_path_mut(&mut self, path: &[usize]) -> Option<&mut TreeNode> {
@@ -139,18 +132,13 @@ impl App {
             return;
         }
 
-        // Try to go to previous sibling first
         let current_idx = *self.path.last().unwrap();
 
         if current_idx > 0 {
-            // Go to previous sibling
             self.path.pop();
             self.path.push(current_idx - 1);
-
-            // If the previous sibling is expanded, go to its last visible descendant
             self.go_to_last_visible_descendant();
         } else {
-            // Already at first sibling, just go up
             self.path.pop();
         }
     }
@@ -174,7 +162,6 @@ impl App {
             return;
         }
 
-        // Try to find next sibling at current level or higher
         loop {
             if self.path.is_empty() {
                 return;
@@ -183,23 +170,20 @@ impl App {
             let current_idx = *self.path.last().unwrap();
             let parent_path_len = self.path.len() - 1;
 
-            // Get parent node
             let parent_node = if parent_path_len == 0 {
                 Some(&self.root)
             } else {
                 self.get_node_at_path(&self.path[..parent_path_len])
             };
 
-            if let Some(parent) = parent_node {
-                // Try to go to next sibling
-                if current_idx + 1 < parent.children.len() {
-                    self.path.pop();
-                    self.path.push(current_idx + 1);
-                    return;
-                }
+            if let Some(parent) = parent_node
+                && current_idx + 1 < parent.children.len()
+            {
+                self.path.pop();
+                self.path.push(current_idx + 1);
+                return;
             }
 
-            // No more siblings at this level, go up one level and try again
             self.path.pop();
         }
     }
@@ -307,35 +291,30 @@ impl App {
         }
     }
 
-    fn to_policy_trees(&self) -> Vec<PolicyTree> {
-        // All entries are directly under root, so return as single tree
-        let entries: Vec<PolicyNode> = self
-            .root
-            .children
-            .iter()
-            .map(|child| self.node_to_policy_node(child))
-            .collect();
-
-        vec![PolicyTree { entries }]
+    fn to_entries(&self) -> Vec<PolicyEntry> {
+        let mut entries = Vec::new();
+        self.collect_entries(&self.root, &mut entries);
+        entries
     }
 
-    fn node_to_policy_node(&self, node: &TreeNode) -> PolicyNode {
+    fn collect_entries(&self, node: &TreeNode, entries: &mut Vec<PolicyEntry>) {
         let access = match node.allow_state {
             AllowState::Deny => Access::Deny,
             AllowState::RO => Access::ReadOnly,
             AllowState::RW => Access::ReadWrite,
             AllowState::Tmp => Access::Tmpfs,
-            AllowState::Partial => Access::ReadOnly,
+            AllowState::Partial => return,
         };
 
-        PolicyNode {
-            path: node.path.clone(),
-            access,
-            children: node
-                .children
-                .iter()
-                .map(|c| self.node_to_policy_node(c))
-                .collect(),
+        if node.path != "/" {
+            entries.push(PolicyEntry {
+                path: node.path.clone(),
+                access,
+            });
+        }
+
+        for child in &node.children {
+            self.collect_entries(child, entries);
         }
     }
 }
@@ -344,9 +323,8 @@ pub fn run(filename: &str) -> Result<()> {
     let data = fs::read_to_string(filename)
         .with_context(|| format!("Failed to read file: {}", filename))?;
 
-    let trees: Vec<PolicyTree> = serde_json::from_str(&data).context("Failed to parse JSON")?;
-
-    let mut app = App::from_policy_trees(trees, filename.to_string());
+    let entries = parse_entries(&data);
+    let mut app = App::from_entries(entries, filename.to_string());
 
     if !std::io::stdout().is_tty() {
         return Ok(());
@@ -367,9 +345,9 @@ pub fn run(filename: &str) -> Result<()> {
     if let Err(err) = res {
         eprintln!("Error: {}", err);
     } else if app.dirty {
-        let trees = app.to_policy_trees();
-        let json = serde_json::to_string_pretty(&trees)?;
-        fs::write(&app.filename, json)
+        let entries = app.to_entries();
+        let output = entries_to_string(&entries);
+        fs::write(&app.filename, output)
             .with_context(|| format!("Failed to write file: {}", app.filename))?;
         eprintln!("Updated: {}", app.filename);
     }
