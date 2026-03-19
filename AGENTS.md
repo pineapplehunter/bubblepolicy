@@ -9,24 +9,27 @@ src/
 ├── main.rs        # CLI entry point with clap
 ├── lib.rs         # Library exports
 ├── common.rs      # Shared types: Access, PolicyNode, PolicyTree
-├── trace.rs       # Trace subcommand (ptrace-based file access tracing)
+├── trace.rs       # Trace subcommand (uses external strace)
 ├── review.rs      # Review subcommand (CLI tree manipulation)
 ├── review_ui.rs   # Review subcommand (TUI file tree toggler)
 ├── optimise.rs    # Optimize subcommand (tree dedup/compression)
-└── create.rs      # Create subcommand (bubblewrap wrapper generator)
+├── create.rs      # Create subcommand (bubblewrap wrapper generator)
+└── template.sh    # Shell script template for create output
 ```
 
 ## Data Model
 
-### Tree Format
 ```json
-{
-  "entries": [
-    {"path": "/", "access": "ReadOnly", "children": [...]}
-  ]
-}
+[
+  {
+    "entries": [
+      {"path": "/", "access": "ReadOnly", "children": [...]}
+    ]
+  }
+]
 ```
 
+- Output is a list of trees (absolute paths + relative paths)
 - Only non-deny entries are in the tree (deny is implicit)
 - Children inherit parent access unless explicitly overridden
 - Access enum: `Deny`, `ReadOnly`, `ReadWrite`, `Tmpfs`
@@ -36,7 +39,7 @@ src/
 ### Build
 ```bash
 cargo build              # Debug build
-cargo build --release    # Release build (with LTO and strip)
+cargo build --release    # Release build
 cargo run -- [args]      # Run with args
 ```
 
@@ -69,14 +72,13 @@ cargo clean              # Clean build artifacts
 ### Imports Organization
 Group imports in order (rustfmt handles this automatically):
 1. Standard library (`std::`)
-2. External crates (`crate::`, `color_eyre::`, etc.)
+2. External crates (`color_eyre::`, `ratatui::`, etc.)
 3. Local modules (`crate::common`)
 
 ```rust
+use color_eyre::{Result, eyre::{WrapErr, bail}};
 use std::fs;
 use std::path::Path;
-
-use color_eyre::{eyre::{bail, WrapErr}, Result};
 
 use crate::common::{Access, PolicyNode, PolicyTree};
 ```
@@ -86,18 +88,14 @@ Use `color_eyre` for all error handling:
 ```rust
 use color_eyre::{Result, eyre::{WrapErr, bail}};
 
-// Context on errors:
 fs::read_to_string(file).with_context(|| format!("Failed to read: {}", file))?;
 
-// Early return with error:
 if !Path::new(policy).exists() {
     bail!("Policy file not found: {}", policy);
 }
 
-// Main function returns Result:
 fn main() -> Result<()> {
     color_eyre::install()?;
-    // ...
     Ok(())
 }
 ```
@@ -105,17 +103,21 @@ fn main() -> Result<()> {
 ### Naming Conventions
 - **snake_case**: functions, variables, methods
 - **CamelCase**: types, enums, structs
-- **SCREAMING_SNAKE_CASE**: constants (rarely used)
-- Use descriptive names: `allowed_paths` not `paths`, `is_tmpfs` not `check_tmpfs`
+- Use descriptive names: `is_tmpfs` not `check_tmpfs`, `is_allowed` not `check`
 
 ```rust
-// Structs and enums
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Access {
     Deny,
     ReadOnly,
     ReadWrite,
     Tmpfs,
+}
+
+impl Access {
+    pub fn is_allowed(&self) -> bool {
+        !matches!(self, Access::Deny)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,53 +127,27 @@ pub struct PolicyNode {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<PolicyNode>,
 }
-
-// Helper methods on enums
-impl Access {
-    pub fn is_allowed(&self) -> bool {
-        !matches!(self, Access::Deny)
-    }
-}
 ```
 
 ### Module Structure
-Each subcommand is a separate module with a `run` function:
-```rust
-pub fn run(file: &str, ro: &[String], rw: &[String], tmp: &[String], deny: &[String]) -> Result<()> {
-    // Implementation
-    Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_example() {
-        // Tests go here
-    }
-}
-```
+Each subcommand is a separate module with a `run` function returning `Result<()>`.
 
 ### Testing Patterns
 - Unit tests: `#[cfg(test)]` module within source files
 - Integration tests: `tests/` directory
-- Use helper functions for creating test fixtures
+- Helper functions for creating test fixtures
+
 ```rust
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn make_entry(path: &str, access: Access) -> PolicyEntry {
-        PolicyEntry {
-            path: path.to_string(),
-            access,
-        }
+        PolicyEntry { path: path.to_string(), access }
     }
 
     #[test]
     fn test_something() {
-        let entries = vec![make_entry("/test", Access::ReadOnly)];
         // assertions
     }
 }
@@ -191,36 +167,17 @@ cargo add <package>           # Add latest version
 cargo add <package> --vers 1.0 # Add specific version
 ```
 
-## Testing with test_bubblepolicy.sh
-
-```bash
-./test_bubblepolicy.sh all      # Build and run all tests
-./test_bubblepolicy.sh test     # Run test suite only
-./test_bubblepolicy.sh build    # Build only
-./test_bubblepolicy.sh clean    # Clean test files
-
-# Individual tests
-./test_bubblepolicy.sh trace    # Test trace command
-./test_bubblepolicy.sh review   # Test review command
-./test_bubblepolicy.sh create   # Test create command
-./test_bubblepolicy.sh grouping  # Test directory grouping
-./test_bubblepolicy.sh merge    # Test multi-file merge
-```
-
 ## Key Implementation Notes
 
-- **ptrace**: Uses raw `ptrace` via `nix` crate (not external strace)
-- **syscall constants**: Uses `syscall_numbers` crate
-- **Output**: Shell scripts or binary wrappers for bubblewrap
-- **Subcommand outputs**: `trace`, `review-ui` use `--output` flag; `create` uses stdout
-- **optimise**: Automatically collapses paths with identical access into parent directories
+- **trace**: Uses external `strace` command (not raw ptrace)
+- **Output**: `trace`, `review-ui` use `--output` flag; `create` outputs to stdout
+- **optimise**: Collapses paths with identical access into parent directories
+- **create**: Generates shell script using `template.sh` with `include_str!()`
 
 ## Dependencies
 
 - `clap`: CLI parsing with derive macros
 - `color-eyre`: Error handling with colored reports
 - `serde`/`serde_json`: Serialization
-- `ratatui`/`crossterm`: TUI for review-ui
-- `nix`: Linux syscalls (ptrace)
-- `log`/`env_logger`: Logging
-- `syscall_numbers`: Syscall constants
+- `ratatui`: TUI for review-ui
+- `crossterm`: Terminal support (via ratatui)
