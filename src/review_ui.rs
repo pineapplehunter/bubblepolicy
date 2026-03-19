@@ -413,7 +413,7 @@ fn ui(f: &mut ratatui::Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(1), Constraint::Length(3)])
-        .split(f.size());
+        .split(f.area());
 
     let tree_lines = app.render_tree(chunks[0].height);
     let current_pos = app.get_current_visible_position();
