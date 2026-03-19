@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 use color_eyre::{eyre::bail, Result};
 
 #[derive(Parser)]
-#[command(name = "myjail")]
+#[command(name = "bubblepolicy")]
 #[command(about = "Bubblewrap sandbox policy tool - trace, review, optimise, create", long_about = None)]
 struct Cli {
     #[command(subcommand)]
@@ -68,17 +68,17 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::Trace { output, cmd } => {
             if cmd.is_empty() {
-                bail!("Error: command required. Usage: myjail trace <output> -- <command>");
+                bail!("Error: command required. Usage: bubblepolicy trace <output> -- <command>");
             }
             let output = if output == "-" {
                 None
             } else {
                 Some(output.as_str())
             };
-            myjail::trace::run(&cmd, output)?;
+            bubblepolicy::trace::run(&cmd, output)?;
         }
         Commands::ReviewUi { file } => {
-            myjail::review_ui::run(&file)?;
+            bubblepolicy::review_ui::run(&file)?;
         }
         Commands::Review {
             file,
@@ -87,13 +87,13 @@ fn main() -> Result<()> {
             tmp,
             deny,
         } => {
-            myjail::review::run(&file, &ro, &rw, &tmp, &deny)?;
+            bubblepolicy::review::run(&file, &ro, &rw, &tmp, &deny)?;
         }
         Commands::Optimise { file } => {
-            myjail::optimise::run(&file)?;
+            bubblepolicy::optimise::run(&file)?;
         }
         Commands::Create { policy, binary } => {
-            myjail::create::run(&policy, &binary)?;
+            bubblepolicy::create::run(&policy, &binary)?;
         }
     }
 

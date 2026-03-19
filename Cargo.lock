@@ -139,6 +139,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
 
 [[package]]
+name = "bubblepolicy"
+version = "0.1.0"
+dependencies = [
+ "atty",
+ "clap",
+ "color-eyre",
+ "crossterm",
+ "env_logger",
+ "log",
+ "nix",
+ "ratatui",
+ "serde",
+ "serde_json",
+ "syscall-numbers",
+]
+
+[[package]]
 name = "cassowary"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -490,23 +507,6 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "myjail"
-version = "0.1.0"
-dependencies = [
- "atty",
- "clap",
- "color-eyre",
- "crossterm",
- "env_logger",
- "log",
- "nix",
- "ratatui",
- "serde",
- "serde_json",
- "syscall-numbers",
 ]
 
 [[package]]

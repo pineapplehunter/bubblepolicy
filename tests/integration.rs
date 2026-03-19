@@ -4,7 +4,7 @@ use std::process::Command;
 
 fn get_bin_path() -> String {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    format!("{}/target/debug/myjail", manifest_dir)
+    format!("{}/target/debug/bubblepolicy", manifest_dir)
 }
 
 fn setup_policy_with_ro(
@@ -48,8 +48,8 @@ fn modify_entry(entry: &mut serde_json::Value, allowed: &[&str]) -> bool {
 #[test]
 fn test_trace_and_create() {
     let bin_path = get_bin_path();
-    let policy_path = "/tmp/myjail_integration_test.json";
-    let wrapper_path = "/tmp/myjail_wrapper_test.sh";
+    let policy_path = "/tmp/bubblepolicy_integration_test.json";
+    let wrapper_path = "/tmp/bubblepolicy_wrapper_test.sh";
 
     // Clean up
     let _ = fs::remove_file(policy_path);
@@ -105,7 +105,7 @@ fn test_trace_and_create() {
 #[test]
 fn test_trace_produces_valid_json() {
     let bin_path = get_bin_path();
-    let policy_path = "/tmp/myjail_test_valid.json";
+    let policy_path = "/tmp/bubblepolicy_test_valid.json";
 
     let _ = fs::remove_file(policy_path);
 
@@ -151,7 +151,7 @@ fn test_create_requires_existing_policy() {
 #[test]
 fn test_create_with_nested_path() {
     let bin_path = get_bin_path();
-    let policy_path = "/tmp/myjail_test_nested.json";
+    let policy_path = "/tmp/bubblepolicy_test_nested.json";
 
     let _ = fs::remove_file(policy_path);
 

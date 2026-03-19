@@ -1,10 +1,10 @@
-# myjail
+# bubblepolicy
 
 A Rust CLI tool for configuring bubblewrap sandboxes using an SELinux-style workflow: trace → review → optimise → create.
 
 ## AI Disclosure
 
-myjail was developed with AI assistance. This tool helps create sandboxed environments using bubblewrap, and was built using modern AI coding tools to accelerate development while maintaining human oversight and review.
+bubblepolicy was developed with AI assistance. This tool helps create sandboxed environments using bubblewrap, and was built using modern AI coding tools to accelerate development while maintaining human oversight and review.
 
 ## Installation
 
@@ -21,9 +21,9 @@ cargo build --release
 ## Usage
 
 ```
-myjail - Bubblewrap sandbox policy tool
+bubblepolicy - Bubblewrap sandbox policy tool
 
-Usage: myjail <COMMAND>
+Usage: bubblepolicy <COMMAND>
 
 Commands:
   trace     Trace system calls and file access of a command
@@ -39,7 +39,7 @@ Commands:
 Trace system calls and file access of a command:
 
 ```bash
-myjail trace trace.json -- firefox
+bubblepolicy trace trace.json -- firefox
 ```
 
 Output format (tree with default values):
@@ -57,7 +57,7 @@ Output format (tree with default values):
 Review traced paths in a TUI file tree and toggle allow/deny:
 
 ```bash
-myjail review-ui trace.json
+bubblepolicy review-ui trace.json
 ```
 
 This will update the contents of `trace.json`.
@@ -68,7 +68,7 @@ Manipulate tree attributes via CLI (for scripting):
 
 ```bash
 # Set path access
-myjail review trace.json --ro /nix --rw /home --tmp /run
+bubblepolicy review trace.json --ro /nix --rw /home --tmp /run
 ```
 
 This updates the tree attributes inplace.
@@ -78,7 +78,7 @@ This updates the tree attributes inplace.
 Optimise/dedup the policy tree inplace (collapse same-access siblings):
 
 ```bash
-myjail optimise trace.json
+bubblepolicy optimise trace.json
 ```
 
 This reduces redundant entries by collapsing directories with identical access.
@@ -89,7 +89,7 @@ The format of this is a list of trees.
 Create a bubblewrap wrapper script from a policy:
 
 ```bash
-myjail create optimised.json
+bubblepolicy create optimised.json
 ```
 
 The wrapper script will automatically:
@@ -99,7 +99,7 @@ The wrapper script will automatically:
 
 ## Workflow
 
-1. **Trace**: Run `myjail trace --output trace.json -- <command>` to trace all system calls and file accesses
+1. **Trace**: Run `bubblepolicy trace --output trace.json -- <command>` to trace all system calls and file accesses
 2. **Review**: Review the paths in TUI (`review-ui`) or CLI (`review`) to toggle which directories should be allowed/denied
 3. **Optimise**: Dedup the policy tree to reduce redundant entries
 4. **Create**: Generate a bubblewrap wrapper script to sandbox your application
@@ -108,19 +108,19 @@ Example full workflow:
 
 ```bash
 # Step 1: Trace
-myjail trace trace.json -- /usr/bin/firefox
+bubblepolicy trace trace.json -- /usr/bin/firefox
 
 # Step 2: Review (TUI)
-myjail review-ui trace.json
+bubblepolicy review-ui trace.json
 
 # Step 3: Review (CLI alternative)
-myjail review trace.json -r /etc -w /home
+bubblepolicy review trace.json -r /etc -w /home
 
 # Step 4: Optimise
-myjail optimise trace.json
+bubblepolicy optimise trace.json
 
 # Step 5: Create wrapper
-myjail create trace.json /usr/bin/firefox > firefox-sandbox
+bubblepolicy create trace.json /usr/bin/firefox > firefox-sandbox
 
 # Step 6: Make executable and run
 chmod +x firefox-sandbox

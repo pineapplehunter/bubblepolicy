@@ -1,5 +1,5 @@
 [package]
-name = "myjail"
+name = "bubblepolicy"
 version = "0.1.0"
 edition = "2021"
 

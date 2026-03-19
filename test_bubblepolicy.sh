@@ -1,5 +1,5 @@
-# Convenience script for testing myjail tool
-# Run with: bash test_myjail.sh
+# Convenience script for testing bubblepolicy tool
+# Run with: bash test_bubblepolicy.sh
 
 set -e
 
@@ -11,10 +11,10 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Directories
-TEST_DIR="/tmp/myjail_test"
+TEST_DIR="/tmp/bubblepolicy_test"
 BUILD_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo -e "${BLUE}=== myjail Test Script ===${NC}"
+echo -e "${BLUE}=== bubblepolicy Test Script ===${NC}"
 echo ""
 
 # Function to print colored messages
@@ -36,7 +36,7 @@ print_error() {
 
 # Build the project
 build_project() {
-    print_info "Building myjail..."
+    print_info "Building bubblepolicy..."
     if ! cargo build --release 2>&1 | grep -q "Finished"; then
         print_error "Build failed!"
         exit 1
@@ -51,7 +51,7 @@ test_trace() {
 
     # Test with a simple command
     print_info "Tracing: echo 'hello'"
-    if ! "$BUILD_DIR/target/release/myjail" trace --output "$TEST_DIR/trace1.json" -- echo "hello" 2>/dev/null; then
+    if ! "$BUILD_DIR/target/release/bubblepolicy" trace --output "$TEST_DIR/trace1.json" -- echo "hello" 2>/dev/null; then
         print_error "Trace failed!"
         return 1
     fi
@@ -77,7 +77,7 @@ test_review() {
 
     # Test non-interactive review (generate policy)
     print_info "Generating policy from trace..."
-    if ! "$BUILD_DIR/target/release/myjail" review --generate-policy --output "$TEST_DIR/policy1.json" "$TEST_DIR/trace1.json" 2>/dev/null; then
+    if ! "$BUILD_DIR/target/release/bubblepolicy" review --generate-policy --output "$TEST_DIR/policy1.json" "$TEST_DIR/trace1.json" 2>/dev/null; then
         print_error "Review failed!"
         return 1
     fi
@@ -102,7 +102,7 @@ test_create() {
 
     # Test creating a wrapper script
     print_info "Creating wrapper script..."
-    if ! "$BUILD_DIR/target/release/myjail" create --policy "$TEST_DIR/policy1.json" /bin/echo --output "$TEST_DIR/echo_wrapper.sh" 2>/dev/null; then
+    if ! "$BUILD_DIR/target/release/bubblepolicy" create --policy "$TEST_DIR/policy1.json" /bin/echo --output "$TEST_DIR/echo_wrapper.sh" 2>/dev/null; then
         print_error "Create failed!"
         return 1
     fi
@@ -126,7 +126,7 @@ test_directory_grouping() {
 
     # Create a trace with multiple files in same directory
     print_info "Creating trace with multiple files..."
-    "$BUILD_DIR/target/release/myjail" trace --output "$TEST_DIR/trace_multi.json" -- ls -la /etc 2>/dev/null
+    "$BUILD_DIR/target/release/bubblepolicy" trace --output "$TEST_DIR/trace_multi.json" -- ls -la /etc 2>/dev/null
 
     if [[ ! -f "$TEST_DIR/trace_multi.json" ]]; then
         print_error "Multi-file trace failed!"
@@ -134,8 +134,8 @@ test_directory_grouping() {
     fi
 
     # Generate policy and wrapper
-    "$BUILD_DIR/target/release/myjail" review --generate-policy --output "$TEST_DIR/policy_multi.json" "$TEST_DIR/trace_multi.json" 2>/dev/null
-    "$BUILD_DIR/target/release/myjail" create --policy "$TEST_DIR/policy_multi.json" /bin/ls --output "$TEST_DIR/ls_wrapper.sh" 2>/dev/null
+    "$BUILD_DIR/target/release/bubblepolicy" review --generate-policy --output "$TEST_DIR/policy_multi.json" "$TEST_DIR/trace_multi.json" 2>/dev/null
+    "$BUILD_DIR/target/release/bubblepolicy" create --policy "$TEST_DIR/policy_multi.json" /bin/ls --output "$TEST_DIR/ls_wrapper.sh" 2>/dev/null
 
     # Count bind mounts
     local bind_count=$(grep -c "ro-bind" "$TEST_DIR/ls_wrapper.sh" 2>/dev/null || echo "0")
@@ -152,12 +152,12 @@ test_multi_file_merge() {
 
     # Create multiple trace files
     print_info "Creating multiple trace files..."
-    "$BUILD_DIR/target/release/myjail" trace --output "$TEST_DIR/trace_a.json" -- echo "test a" 2>/dev/null
-    "$BUILD_DIR/target/release/myjail" trace --output "$TEST_DIR/trace_b.json" -- echo "test b" 2>/dev/null
+    "$BUILD_DIR/target/release/bubblepolicy" trace --output "$TEST_DIR/trace_a.json" -- echo "test a" 2>/dev/null
+    "$BUILD_DIR/target/release/bubblepolicy" trace --output "$TEST_DIR/trace_b.json" -- echo "test b" 2>/dev/null
 
     # Merge them with review
     print_info "Merging trace files..."
-    "$BUILD_DIR/target/release/myjail" review --generate-policy --output "$TEST_DIR/merged_policy.json" "$TEST_DIR/trace_a.json" "$TEST_DIR/trace_b.json" 2>/dev/null
+    "$BUILD_DIR/target/release/bubblepolicy" review --generate-policy --output "$TEST_DIR/merged_policy.json" "$TEST_DIR/trace_a.json" "$TEST_DIR/trace_b.json" 2>/dev/null
 
     if [[ ! -f "$TEST_DIR/merged_policy.json" ]]; then
         print_error "Multi-file merge failed!"

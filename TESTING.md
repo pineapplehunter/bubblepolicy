@@ -1,33 +1,33 @@
-# Testing myjail
+# Testing bubblepolicy
 
-This document describes how to test the myjail tool using the provided convenience script.
+This document describes how to test the bubblepolicy tool using the provided convenience script.
 
 ## Quick Test
 
 Run the full test suite with:
 
 ```bash
-./test_myjail.sh test
+./test_bubblepolicy.sh test
 ```
 
 ## Available Commands
 
 | Command | Description |
 |---------|-------------|
-| `./test_myjail.sh build` | Build the project |
-| `./test_myjail.sh test` | Run all tests |
-| `./test_myjail.sh clean` | Clean test files |
-| `./test_myjail.sh all` | Build and run all tests |
+| `./test_bubblepolicy.sh build` | Build the project |
+| `./test_bubblepolicy.sh test` | Run all tests |
+| `./test_bubblepolicy.sh clean` | Clean test files |
+| `./test_bubblepolicy.sh all` | Build and run all tests |
 
 ### Individual Tests
 
 | Command | Description |
 |---------|-------------|
-| `./test_myjail.sh trace` | Test trace command only |
-| `./test_myjail.sh review` | Test review command only |
-| `./test_myjail.sh create` | Test create command only |
-| `./test_myjail.sh grouping` | Test directory grouping optimization |
-| `./test_myjail.sh merge` | Test multi-file merge in review |
+| `./test_bubblepolicy.sh trace` | Test trace command only |
+| `./test_bubblepolicy.sh review` | Test review command only |
+| `./test_bubblepolicy.sh create` | Test create command only |
+| `./test_bubblepolicy.sh grouping` | Test directory grouping optimization |
+| `./test_bubblepolicy.sh merge` | Test multi-file merge in review |
 
 ## Test Coverage
 
@@ -64,13 +64,13 @@ The test script covers:
 
 ```bash
 # Step 1: Trace
-./target/release/myjail trace --output /tmp/trace.json -- echo "hello"
+./target/release/bubblepolicy trace --output /tmp/trace.json -- echo "hello"
 
 # Step 2: Review (generate policy)
-./target/release/myjail review --generate-policy --output /tmp/policy.json /tmp/trace.json
+./target/release/bubblepolicy review --generate-policy --output /tmp/policy.json /tmp/trace.json
 
 # Step 3: Create wrapper
-./target/release/myjail create --policy /tmp/policy.json /bin/echo --output /tmp/echo_wrapper.sh
+./target/release/bubblepolicy create --policy /tmp/policy.json /bin/echo --output /tmp/echo_wrapper.sh
 
 # Step 4: Make executable and test
 chmod +x /tmp/echo_wrapper.sh
@@ -81,11 +81,11 @@ chmod +x /tmp/echo_wrapper.sh
 
 ```bash
 # Trace a command that accesses many files in same directories
-./target/release/myjail trace --output /tmp/trace_multi.json -- ls -la /etc
+./target/release/bubblepolicy trace --output /tmp/trace_multi.json -- ls -la /etc
 
 # Generate policy and wrapper
-./target/release/myjail review --generate-policy --output /tmp/policy_multi.json /tmp/trace_multi.json
-./target/release/myjail create --policy /tmp/policy_multi.json /bin/ls --output /tmp/ls_wrapper.sh
+./target/release/bubblepolicy review --generate-policy --output /tmp/policy_multi.json /tmp/trace_multi.json
+./target/release/bubblepolicy create --policy /tmp/policy_multi.json /bin/ls --output /tmp/ls_wrapper.sh
 
 # Compare number of files vs bind mounts
 echo "Files in policy: $(grep -c '"path"' /tmp/policy_multi.json)"
@@ -94,7 +94,7 @@ echo "Bind mounts in wrapper: $(grep -c "ro-bind" /tmp/ls_wrapper.sh)"
 
 ## Test Files Location
 
-All test files are created in `/tmp/myjail_test/` directory:
+All test files are created in `/tmp/bubblepolicy_test/` directory:
 - `trace1.json` - Trace output
 - `policy1.json` - Generated policy
 - `echo_wrapper.sh` - Generated wrapper script

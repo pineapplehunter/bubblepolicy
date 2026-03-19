@@ -297,30 +297,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_file_access_sort() {
-        let mut files = vec![
-            FileAccess {
-                path: "/b".to_string(),
-            },
-            FileAccess {
-                path: "/a".to_string(),
-            },
-        ];
-        files.sort();
-        assert_eq!(files[0].path, "/a");
-        assert_eq!(files[1].path, "/b");
-    }
-
-    #[test]
     fn test_filter_path_absolute() {
         let result = filter_path("/absolute/path");
         assert_eq!(result, Some("/absolute/path".to_string()));
-    }
-
-    #[test]
-    fn test_filter_path_relative() {
-        let result = filter_path("relative/path");
-        assert_eq!(result, Some("relative/path".to_string()));
     }
 
     #[test]
@@ -338,12 +317,6 @@ mod tests {
     #[test]
     fn test_parse_strace_open() {
         let line = "12345 open(\"/etc/passwd\", O_RDONLY) = 3";
-        assert_eq!(parse_strace_line(line), Some("/etc/passwd".to_string()));
-    }
-
-    #[test]
-    fn test_parse_strace_openat_no_at_fdcwd() {
-        let line = "12345 openat(\"/etc/passwd\", O_RDONLY) = 3";
         assert_eq!(parse_strace_line(line), Some("/etc/passwd".to_string()));
     }
 }

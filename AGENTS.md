@@ -1,35 +1,24 @@
 # AGENTS.md - Agent Guidelines for This Project
 
-A Rust CLI tool for configuring bubblewrap sandboxes with SELinux-style workflow.
+A Rust CLI tool for configuring bubblewrap sandboxes with SELinux-style workflow: trace → review → optimise → create.
 
-## Project Overview
-
-- `src/main.rs` - CLI entry point with clap
-- `src/trace.rs` - Trace subcommand (strace wrapper) - outputs tree format with default ReadOnly access
-- `src/review_ui.rs` - Review subcommand (TUI file tree toggler)
-- `src/review.rs` - Review subcommand (CLI for manipulating tree attributes)
-- `src/optimise.rs` - Optimize subcommand (dedup tree)
-- `src/create.rs` - Create subcommand (wrapper generator)
-- `src/lib.rs` - Library exports
-- `Cargo.toml` - Rust dependencies
-
-## Data Flow
+## Project Structure
 
 ```
-trace -> review-ui/review -> optimise -> create
-         (manipulate)      (dedup)     (generate script)
+src/
+├── main.rs        # CLI entry point with clap
+├── lib.rs         # Library exports
+├── common.rs      # Shared types: Access, PolicyNode, PolicyTree
+├── trace.rs       # Trace subcommand (ptrace-based file access tracing)
+├── review.rs      # Review subcommand (CLI tree manipulation)
+├── review_ui.rs   # Review subcommand (TUI file tree toggler)
+├── optimise.rs    # Optimize subcommand (tree dedup/compression)
+└── create.rs      # Create subcommand (bubblewrap wrapper generator)
 ```
 
-### Subcommands
-
-1. **trace**: Run command and trace file access, output as tree with default values
-2. **review-ui**: TUI to manually review and change attributes of the tree
-3. **review**: CLI to view/manipulate tree attributes
-4. **optimise**: Dedup/compress the tree (collapse same-access siblings)
-5. **create**: Generate bubblewrap wrapper script
+## Data Model
 
 ### Tree Format
-
 ```json
 {
   "entries": [
@@ -39,94 +28,156 @@ trace -> review-ui/review -> optimise -> create
 ```
 
 - Only non-deny entries are in the tree (deny is implicit)
-- Each tree root is a separate entry point
 - Children inherit parent access unless explicitly overridden
+- Access enum: `Deny`, `ReadOnly`, `ReadWrite`, `Tmpfs`
 
 ## Build/Lint/Test Commands
 
 ### Build
 ```bash
-cargo build          # Debug build
-cargo build --release  # Release build
-cargo run -- [args]  # Run with args
+cargo build              # Debug build
+cargo build --release    # Release build (with LTO and strip)
+cargo run -- [args]      # Run with args
 ```
 
 ### Format & Lint
 ```bash
-cargo fmt            # Format code
-cargo fmt -- --check  # Check formatting
-cargo clippy         # Lint with clippy
-cargo clippy -- -D warnings  # Strict lint
+cargo fmt                # Format code
+cargo fmt -- --check     # Check formatting without changes
+cargo clippy             # Lint with clippy
+cargo clippy -- -D warnings  # Strict lint (fail on warnings)
 ```
 
 ### Test
 ```bash
-cargo test           # Run all tests
-cargo test <name>    # Run specific test
-cargo test -- --nocapture  # Show output
+cargo test               # Run all tests
+cargo test <name>        # Run specific test (e.g., cargo test test_set_node_access)
+cargo test -- --nocapture  # Show stdout/stderr output
+cargo test --lib         # Run only library tests
+cargo test --test '*'    # Run only integration tests
 ```
 
-### Check
+### Other
 ```bash
-cargo check          # Type check only
-cargo doc            # Generate docs
+cargo check              # Type check only (fast)
+cargo doc                # Generate documentation
+cargo clean              # Clean build artifacts
 ```
 
 ## Code Style Guidelines
 
-### General
-- Use 4-space indentation for Rust
-- Follow `rustfmt` default style
-- Use `color_eyre` for error handling (Result<T, eyre::Report>)
-- Use `log` + `env_logger` for logging
+### Imports Organization
+Group imports in order (rustfmt handles this automatically):
+1. Standard library (`std::`)
+2. External crates (`crate::`, `color_eyre::`, etc.)
+3. Local modules (`crate::common`)
 
-### Error Handling with color_eyre
+```rust
+use std::fs;
+use std::path::Path;
+
+use color_eyre::{eyre::{bail, WrapErr}, Result};
+
+use crate::common::{Access, PolicyNode, PolicyTree};
+```
+
+### Error Handling
+Use `color_eyre` for all error handling:
 ```rust
 use color_eyre::{Result, eyre::{WrapErr, bail}};
 
-// For context on errors:
-let x = operation().context("Failed to do thing")?;
+// Context on errors:
+fs::read_to_string(file).with_context(|| format!("Failed to read: {}", file))?;
 
-// For bailing early with an error:
-if condition {
-    bail!("Something went wrong: {}", reason);
-}
-```
-
-### Naming
-- `snake_case` for functions/variables
-- `CamelCase` for types/enums
-- Descriptive names: `allowed_paths` not `paths`
-```rust
-#[derive(Clone, Debug)]
-struct Config {
-    allow: Vec<PathBuf>,
-    deny: Vec<PathBuf>,
+// Early return with error:
+if !Path::new(policy).exists() {
+    bail!("Policy file not found: {}", policy);
 }
 
-#[derive(Clone, Debug, PartialEq)]
-enum Permission {
-    Allow,
-    Deny,
-}
-```
-
-### Module Structure
-Each subcommand is a module:
-```rust
-pub fn run(args: &[Type]) -> Result<()> {
-    // implementation
+// Main function returns Result:
+fn main() -> Result<()> {
+    color_eyre::install()?;
+    // ...
     Ok(())
 }
 ```
 
-## Development
+### Naming Conventions
+- **snake_case**: functions, variables, methods
+- **CamelCase**: types, enums, structs
+- **SCREAMING_SNAKE_CASE**: constants (rarely used)
+- Use descriptive names: `allowed_paths` not `paths`, `is_tmpfs` not `check_tmpfs`
 
-### Adding Dependencies
-```bash
-cargo add <package>          # Add latest version
-cargo add <package> --vers 1.0  # Add specific version
+```rust
+// Structs and enums
+#[derive(Debug, Clone, PartialEq)]
+pub enum Access {
+    Deny,
+    ReadOnly,
+    ReadWrite,
+    Tmpfs,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PolicyNode {
+    pub path: String,
+    pub access: Access,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<PolicyNode>,
+}
+
+// Helper methods on enums
+impl Access {
+    pub fn is_allowed(&self) -> bool {
+        !matches!(self, Access::Deny)
+    }
+}
 ```
+
+### Module Structure
+Each subcommand is a separate module with a `run` function:
+```rust
+pub fn run(file: &str, ro: &[String], rw: &[String], tmp: &[String], deny: &[String]) -> Result<()> {
+    // Implementation
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_example() {
+        // Tests go here
+    }
+}
+```
+
+### Testing Patterns
+- Unit tests: `#[cfg(test)]` module within source files
+- Integration tests: `tests/` directory
+- Use helper functions for creating test fixtures
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_entry(path: &str, access: Access) -> PolicyEntry {
+        PolicyEntry {
+            path: path.to_string(),
+            access,
+        }
+    }
+
+    #[test]
+    fn test_something() {
+        let entries = vec![make_entry("/test", Access::ReadOnly)];
+        // assertions
+    }
+}
+```
+
+## Development Workflow
 
 ### Adding New Subcommands
 1. Add variant to `Commands` enum in `main.rs`
@@ -134,52 +185,42 @@ cargo add <package> --vers 1.0  # Add specific version
 3. Add `pub mod <command>;` to `src/lib.rs`
 4. Add handler in `main.rs` match block
 
-## Working with This Repository
-
-1. **Always run `cargo fmt`** before committing
-2. **Always run `cargo clippy`** to catch issues
-3. **Test with `cargo test`** before submitting
-4. Build release with `cargo build --release`
-5. Use `color_eyre::eyre::{bail, WrapErr}` for error handling
-
-### Testing
-
-Use the convenience test script to verify functionality:
-
+### Adding Dependencies
 ```bash
-# Run all tests
-bash test_myjail.sh test
-
-# Run specific tests
-bash test_myjail.sh trace
-bash test_myjail.sh review
-bash test_myjail.sh create
-bash test_myjail.sh grouping
-bash test_myjail.sh merge
-
-# Build and test everything
-bash test_myjail.sh all
-
-# Clean test files
-bash test_myjail.sh clean
+cargo add <package>           # Add latest version
+cargo add <package> --vers 1.0 # Add specific version
 ```
 
-The test script covers:
-- Trace command functionality
-- Review command with policy generation
-- Create command with wrapper generation
-- Directory grouping optimization
-- Multi-file merge in review
+## Testing with test_bubblepolicy.sh
 
-## Notes for Agents
+```bash
+./test_bubblepolicy.sh all      # Build and run all tests
+./test_bubblepolicy.sh test     # Run test suite only
+./test_bubblepolicy.sh build    # Build only
+./test_bubblepolicy.sh clean    # Clean test files
 
-- This is a bubblewrap policy tool with 4 subcommands: `trace`, `review`, `optimise`, `create`
-- Uses `clap` for CLI parsing, `color_eyre` for errors
-- Uses raw `ptrace` via `nix` crate for trace command (not external strace)
-- Uses `syscall_numbers` crate for syscall constants
-- Output: shell scripts or binary wrappers for bubblewrap
-- SELinux-style workflow: trace → review → optimise → create
-- All subcommands support `--output` flag for file output (default: stdout)
-- `optimise` subcommand automatically optimizes directory binds by collapsing paths with identical access
-- Policy entries use `Access` enum: `Deny`, `ReadOnly`, `ReadWrite`, `Tmpfs`
-- Test data files in `test_data/` directory for manual testing
+# Individual tests
+./test_bubblepolicy.sh trace    # Test trace command
+./test_bubblepolicy.sh review   # Test review command
+./test_bubblepolicy.sh create   # Test create command
+./test_bubblepolicy.sh grouping  # Test directory grouping
+./test_bubblepolicy.sh merge    # Test multi-file merge
+```
+
+## Key Implementation Notes
+
+- **ptrace**: Uses raw `ptrace` via `nix` crate (not external strace)
+- **syscall constants**: Uses `syscall_numbers` crate
+- **Output**: Shell scripts or binary wrappers for bubblewrap
+- **Subcommand outputs**: `trace`, `review-ui` use `--output` flag; `create` uses stdout
+- **optimise**: Automatically collapses paths with identical access into parent directories
+
+## Dependencies
+
+- `clap`: CLI parsing with derive macros
+- `color-eyre`: Error handling with colored reports
+- `serde`/`serde_json`: Serialization
+- `ratatui`/`crossterm`: TUI for review-ui
+- `nix`: Linux syscalls (ptrace)
+- `log`/`env_logger`: Logging
+- `syscall_numbers`: Syscall constants
