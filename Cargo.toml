@@ -8,8 +8,12 @@ clap = { version = "4", features = ["derive"] }
 color-eyre = "0.6.5"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
+strace-open-parser = { path = "./strace-open-parser" }
 
 [dependencies.ratatui]
 version = "0.30"
 default-features = false
 features = ["crossterm", "std"]
+
+[workspace]
+members = ["strace-open-parser"]

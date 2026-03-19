@@ -135,20 +135,22 @@ Each subcommand is a separate module with a `run` function returning `Result<()>
 ### Testing Patterns
 - Unit tests: `#[cfg(test)]` module within source files
 - Integration tests: `tests/` directory
-- Helper functions for creating test fixtures
+- Tests are written for human readability, not code reuse
+- No helper functions or test fixtures in tests
+- Use descriptive variable names and inline assertions
 
 ```rust
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn make_entry(path: &str, access: Access) -> PolicyEntry {
-        PolicyEntry { path: path.to_string(), access }
-    }
-
     #[test]
-    fn test_something() {
-        // assertions
+    fn test_parse_openat() {
+        let input = "12345 openat(AT_FDCWD, \"/etc/passwd\", O_RDONLY) = 3";
+        let result = parse_strace_output(input);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].path, "/etc/passwd");
+        assert_eq!(result[0].access, Access::ReadOnly);
     }
 }
 ```

@@ -1,0 +1,8 @@
+[package]
+name = "strace-open-parser"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+regex = "1.11"
+serde = { version = "1.0.228", features = ["derive"] }

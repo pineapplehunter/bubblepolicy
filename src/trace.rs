@@ -1,13 +1,16 @@
-use color_eyre::{Result, eyre::bail};
+use color_eyre::{eyre::bail, Result};
 use std::collections::BTreeMap;
 use std::fs;
 use std::process::Command;
+
+use strace_open_parser::parse_strace_output;
 
 use crate::common::{Access, PolicyNode, PolicyTree};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FileAccess {
     pub path: String,
+    pub access: Access,
 }
 
 pub fn run(cmd: &[String], output: Option<&str>) -> Result<()> {
@@ -23,7 +26,6 @@ pub fn run(cmd: &[String], output: Option<&str>) -> Result<()> {
     let file_accesses = trace_command(binary, args)?;
     eprintln!("Found {} file accesses", file_accesses.len());
 
-    // Split into absolute and relative paths
     let mut absolute_files = Vec::new();
     let mut relative_files = Vec::new();
 
@@ -103,7 +105,7 @@ fn files_to_tree(files: Vec<FileAccess>) -> PolicyTree {
         if node.children.is_empty() {
             let access = file_map
                 .get(&node.path)
-                .map(|_fa| Access::Deny)
+                .map(|fa| fa.access.clone())
                 .unwrap_or(Access::Deny);
             return vec![PolicyNode {
                 path: node.path.clone(),
@@ -189,7 +191,7 @@ fn files_to_tree_relative(files: Vec<FileAccess>) -> PolicyTree {
         if node.children.is_empty() {
             let access = file_map
                 .get(&node.path)
-                .map(|_fa| Access::Deny)
+                .map(|fa| fa.access.clone())
                 .unwrap_or(Access::Deny);
             return vec![PolicyNode {
                 path: node.path.clone(),
@@ -221,9 +223,6 @@ fn files_to_tree_relative(files: Vec<FileAccess>) -> PolicyTree {
 }
 
 fn trace_command(binary: &str, args: &[String]) -> Result<Vec<FileAccess>> {
-    let mut file_map: BTreeMap<String, FileAccess> = BTreeMap::new();
-
-    // Build the command: strace -e trace=open,openat,openat2 -f -o /dev/stdout -- <binary> <args>
     let mut cmd = Command::new("strace");
     cmd.arg("-e").arg("trace=open,openat,openat2");
     cmd.arg("-f");
@@ -234,15 +233,17 @@ fn trace_command(binary: &str, args: &[String]) -> Result<Vec<FileAccess>> {
 
     let output = cmd.output()?;
 
-    // Parse strace output - it goes to stdout when using -o /dev/stdout
     let stdout = String::from_utf8_lossy(&output.stdout);
-    for line in stdout.lines() {
-        // strace output format: <pid> openat(AT_FDCWD, "/path/to/file", O_RDONLY) = 3
-        // or: <pid> open("/path/to/file", O_RDONLY) = 3
-        if let Some(path) = parse_strace_line(line)
-            && let Some(p) = filter_path(&path)
-        {
-            file_map.entry(p.clone()).or_insert(FileAccess { path: p });
+    let file_accesses = parse_strace_output(&stdout);
+
+    let mut file_map: BTreeMap<String, FileAccess> = BTreeMap::new();
+    for fa in file_accesses {
+        if !fa.path.is_empty() {
+            let converted = FileAccess {
+                path: fa.path,
+                access: convert_access(fa.access),
+            };
+            file_map.entry(converted.path.clone()).or_insert(converted);
         }
     }
 
@@ -252,71 +253,11 @@ fn trace_command(binary: &str, args: &[String]) -> Result<Vec<FileAccess>> {
     Ok(files)
 }
 
-fn parse_strace_line(line: &str) -> Option<String> {
-    // Match openat(AT_FDCWD, "/path", ...) or open("/path", ...)
-    if let Some(at_fdcwd_pos) = line.find("AT_FDCWD") {
-        // openat format: openat(AT_FDCWD, "/path", ...)
-        if let Some(quote_start) = line[at_fdcwd_pos..].find('"') {
-            let rest = &line[at_fdcwd_pos + quote_start + 1..];
-            if let Some(quote_end) = rest.find('"') {
-                let path = &rest[..quote_end];
-                return Some(path.to_string());
-            }
-        }
-    } else if let Some(open_pos) = line.find("open(") {
-        // open format: open("/path", ...)
-        if let Some(quote_start) = line[open_pos..].find('"') {
-            let rest = &line[open_pos + quote_start + 1..];
-            if let Some(quote_end) = rest.find('"') {
-                let path = &rest[..quote_end];
-                return Some(path.to_string());
-            }
-        }
-    } else if let Some(openat_pos) = line.find("openat(") {
-        // openat format without AT_FDCWD: openat("/path", ...)
-        if let Some(quote_start) = line[openat_pos..].find('"') {
-            let rest = &line[openat_pos + quote_start + 1..];
-            if let Some(quote_end) = rest.find('"') {
-                let path = &rest[..quote_end];
-                return Some(path.to_string());
-            }
-        }
-    }
-    None
-}
-
-fn filter_path(path: &str) -> Option<String> {
-    if path.is_empty() {
-        return None;
-    }
-    Some(path.to_string())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_filter_path_absolute() {
-        let result = filter_path("/absolute/path");
-        assert_eq!(result, Some("/absolute/path".to_string()));
-    }
-
-    #[test]
-    fn test_filter_path_empty() {
-        let result = filter_path("");
-        assert_eq!(result, None);
-    }
-
-    #[test]
-    fn test_parse_strace_openat() {
-        let line = "12345 openat(AT_FDCWD, \"/etc/passwd\", O_RDONLY) = 3";
-        assert_eq!(parse_strace_line(line), Some("/etc/passwd".to_string()));
-    }
-
-    #[test]
-    fn test_parse_strace_open() {
-        let line = "12345 open(\"/etc/passwd\", O_RDONLY) = 3";
-        assert_eq!(parse_strace_line(line), Some("/etc/passwd".to_string()));
+fn convert_access(access: strace_open_parser::Access) -> Access {
+    match access {
+        strace_open_parser::Access::ReadOnly => Access::ReadOnly,
+        strace_open_parser::Access::ReadWrite => Access::ReadWrite,
+        strace_open_parser::Access::Tmpfs => Access::Tmpfs,
+        strace_open_parser::Access::Deny => Access::Deny,
     }
 }

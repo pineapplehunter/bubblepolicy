@@ -84,6 +84,7 @@ fn test_trace_and_create() {
     );
 
     let stdout = String::from_utf8_lossy(&output.stdout);
+    dbg!(&stdout);
     assert!(
         stdout.contains("#!/bin/bash"),
         "Output should be a bash script"

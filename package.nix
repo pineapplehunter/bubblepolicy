@@ -15,6 +15,7 @@ rustPlatform.buildRustPackage {
       ./Cargo.lock
       ./Cargo.toml
       ./src
+      ./strace-open-parser
     ];
   };
 
