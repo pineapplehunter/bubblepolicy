@@ -3,10 +3,12 @@ name = "bubblepolicy"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["ui"]
+ui = ["dep:ratatui", "dep:crossterm"]
+
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-ratatui = "0.30"
-crossterm = "0.27"
 log = "0.4"
 env_logger = "0.11"
 color-eyre = "0.6.5"
@@ -15,6 +17,8 @@ serde_json = "1.0.149"
 atty = "0.2.14"
 nix = { version = "0.31.2", features = ["ptrace"] }
 syscall-numbers = "4.0.2"
+ratatui = { version = "0.30", optional = true }
+crossterm = { version = "0.27", optional = true }
 
 [profile.release]
 strip = true
