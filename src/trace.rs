@@ -239,10 +239,10 @@ fn trace_command(binary: &str, args: &[String]) -> Result<Vec<FileAccess>> {
     for line in stdout.lines() {
         // strace output format: <pid> openat(AT_FDCWD, "/path/to/file", O_RDONLY) = 3
         // or: <pid> open("/path/to/file", O_RDONLY) = 3
-        if let Some(path) = parse_strace_line(line) {
-            if let Some(p) = filter_path(&path) {
-                file_map.entry(p.clone()).or_insert(FileAccess { path: p });
-            }
+        if let Some(path) = parse_strace_line(line)
+            && let Some(p) = filter_path(&path)
+        {
+            file_map.entry(p.clone()).or_insert(FileAccess { path: p });
         }
     }
 

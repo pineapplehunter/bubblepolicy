@@ -29,11 +29,11 @@ fn setup_policy_with_ro(
 
 fn modify_entry(entry: &mut serde_json::Value, allowed: &[&str]) -> bool {
     let mut modified = false;
-    if let Some(path) = entry.get("path").and_then(|p| p.as_str()) {
-        if allowed.iter().any(|p| path.contains(p)) {
-            entry["access"] = serde_json::Value::String("ReadOnly".to_string());
-            modified = true;
-        }
+    if let Some(path) = entry.get("path").and_then(|p| p.as_str())
+        && allowed.iter().any(|p| path.contains(p))
+    {
+        entry["access"] = serde_json::Value::String("ReadOnly".to_string());
+        modified = true;
     }
     if let Some(children) = entry.get_mut("children").and_then(|c| c.as_array_mut()) {
         for child in children.iter_mut() {
@@ -123,13 +123,13 @@ fn test_trace_produces_valid_json() {
     assert!(!trees.is_empty());
 
     // Verify entries have expected fields
-    if let Some(tree) = trees.first() {
-        if let Some(entries) = tree.get("entries").and_then(|e| e.as_array()) {
-            assert!(!entries.is_empty());
-            if let Some(entry) = entries.first() {
-                assert!(entry.get("path").is_some());
-                assert!(entry.get("access").is_some());
-            }
+    if let Some(tree) = trees.first()
+        && let Some(entries) = tree.get("entries").and_then(|e| e.as_array())
+    {
+        assert!(!entries.is_empty());
+        if let Some(entry) = entries.first() {
+            assert!(entry.get("path").is_some());
+            assert!(entry.get("access").is_some());
         }
     }
 

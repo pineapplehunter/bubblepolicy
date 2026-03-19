@@ -166,11 +166,12 @@ impl App {
     }
 
     fn move_down(&mut self) {
-        if let Some(node) = self.get_node_at_path(&self.path) {
-            if node.expanded && !node.children.is_empty() {
-                self.path.push(0);
-                return;
-            }
+        if let Some(node) = self.get_node_at_path(&self.path)
+            && node.expanded
+            && !node.children.is_empty()
+        {
+            self.path.push(0);
+            return;
         }
 
         // Try to find next sibling at current level or higher
@@ -383,27 +384,27 @@ fn run_app<W: io::Write>(
     loop {
         terminal.draw(|f| ui(f, app))?;
 
-        if crossterm::event::poll(std::time::Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') => break,
-                    KeyCode::Up => app.move_up(),
-                    KeyCode::Down => app.move_down(),
-                    KeyCode::Char('d') => app.set_state(AllowState::Deny),
-                    KeyCode::Char('r') => app.set_state(AllowState::RO),
-                    KeyCode::Char('w') => app.set_state(AllowState::RW),
-                    KeyCode::Char('t') => app.set_state(AllowState::Tmp),
-                    KeyCode::Char('p') => app.set_state(AllowState::Partial),
-                    KeyCode::Right | KeyCode::Char('e') => app.toggle_expanded(),
-                    KeyCode::Left => {
-                        if let Some(node) = app.get_node_at_path(&app.path) {
-                            if node.expanded {
-                                app.toggle_expanded();
-                            }
-                        }
+        if crossterm::event::poll(std::time::Duration::from_millis(100))?
+            && let Event::Key(key) = event::read()?
+        {
+            match key.code {
+                KeyCode::Char('q') => break,
+                KeyCode::Up => app.move_up(),
+                KeyCode::Down => app.move_down(),
+                KeyCode::Char('d') => app.set_state(AllowState::Deny),
+                KeyCode::Char('r') => app.set_state(AllowState::RO),
+                KeyCode::Char('w') => app.set_state(AllowState::RW),
+                KeyCode::Char('t') => app.set_state(AllowState::Tmp),
+                KeyCode::Char('p') => app.set_state(AllowState::Partial),
+                KeyCode::Right | KeyCode::Char('e') => app.toggle_expanded(),
+                KeyCode::Left => {
+                    if let Some(node) = app.get_node_at_path(&app.path)
+                        && node.expanded
+                    {
+                        app.toggle_expanded();
                     }
-                    _ => {}
                 }
+                _ => {}
             }
         }
     }
