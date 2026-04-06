@@ -2,7 +2,7 @@
 
 ## SYNOPSIS
 
-**bubblepolicy create** [_POLICY_] [_BINARY_]
+**bubblepolicy create** [_POLICY_]
 
 ## DESCRIPTION
 
@@ -10,13 +10,11 @@ Create a bubblewrap wrapper script from a policy file. Outputs to stdout.
 
 ## OPTIONS
 
-_POLICY_ - Policy file (default: policy.json).
-
-_BINARY_ - Binary to wrap (default: /bin/sh).
+_POLICY_ - Policy file (default: policy.txt).
 
 ## EXAMPLE
 
-    $ bubblepolicy create policy.json /bin/bash > wrapper.sh
+    $ bubblepolicy create policy.txt > wrapper.sh
 
 ## SEE ALSO
 

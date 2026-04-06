@@ -39,17 +39,14 @@ Commands:
 Trace system calls and file access of a command:
 
 ```bash
-bubblepolicy trace trace.json -- firefox
+bubblepolicy trace --output policy.txt -- firefox
 ```
 
-Output format (tree with default values):
-
-```json
-{
-  "entries": [
-    {"path": "/", "access": "ReadOnly", "children": [...]}
-  ]
-}
+Output format (one entry per line):
+```
+ReadOnly /etc/passwd
+ReadWrite /tmp/file
+Tmpfs /tmp
 ```
 
 ### review-ui
@@ -57,7 +54,7 @@ Output format (tree with default values):
 Review traced paths in a TUI file tree and toggle allow/deny:
 
 ```bash
-bubblepolicy review-ui trace.json
+bubblepolicy review-ui policy.txt
 ```
 
 Keyboard controls:
@@ -71,7 +68,7 @@ Keyboard controls:
 - **D**: Toggle debug view
 - **q**: Quit
 
-This will update the contents of `trace.json`.
+This will update the contents of `policy.txt`.
 
 ### review
 
@@ -79,7 +76,7 @@ Manipulate tree attributes via CLI (for scripting):
 
 ```bash
 # Set path access
-bubblepolicy review trace.json --ro /nix --rw /home --tmp /run
+bubblepolicy review policy.txt --ro /nix --rw /home --tmp /run
 ```
 
 This updates the tree attributes inplace.
@@ -89,18 +86,17 @@ This updates the tree attributes inplace.
 Optimise/dedup the policy tree inplace (collapse same-access siblings):
 
 ```bash
-bubblepolicy optimise trace.json
+bubblepolicy optimise policy.txt
 ```
 
 This reduces redundant entries by collapsing directories with identical access.
-The format of this is a list of trees.
 
 ### create
 
 Create a bubblewrap wrapper script from a policy:
 
 ```bash
-bubblepolicy create optimised.json
+bubblepolicy create policy.txt
 ```
 
 The wrapper script will automatically:
@@ -110,7 +106,7 @@ The wrapper script will automatically:
 
 ## Workflow
 
-1. **Trace**: Run `bubblepolicy trace --output trace.json -- <command>` to trace all system calls and file accesses
+1. **Trace**: Run `bubblepolicy trace --output policy.txt -- <command>` to trace all system calls and file accesses
 2. **Review**: Review the paths in TUI (`review-ui`) or CLI (`review`) to toggle which directories should be allowed/denied
 3. **Optimise**: Dedup the policy tree to reduce redundant entries
 4. **Create**: Generate a bubblewrap wrapper script to sandbox your application
@@ -119,19 +115,19 @@ Example full workflow:
 
 ```bash
 # Step 1: Trace
-bubblepolicy trace trace.json -- /usr/bin/firefox
+bubblepolicy trace --output policy.txt -- /usr/bin/firefox
 
 # Step 2: Review (TUI)
-bubblepolicy review-ui trace.json
+bubblepolicy review-ui policy.txt
 
 # Step 3: Review (CLI alternative)
-bubblepolicy review trace.json -r /etc -w /home
+bubblepolicy review policy.txt -r /etc -w /home
 
 # Step 4: Optimise
-bubblepolicy optimise trace.json
+bubblepolicy optimise policy.txt
 
 # Step 5: Create wrapper
-bubblepolicy create trace.json /usr/bin/firefox > firefox-sandbox
+bubblepolicy create policy.txt > firefox-sandbox
 
 # Step 6: Make executable and run
 chmod +x firefox-sandbox
