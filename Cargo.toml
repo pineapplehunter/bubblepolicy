@@ -12,6 +12,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 strace-open-parser = { path = "./strace-open-parser" }
 tempfile = "3.14"
+unicode-width = "0.2.2"
 
 [dependencies.ratatui]
 version = "0.30"
@@ -20,3 +21,6 @@ features = ["crossterm", "std"]
 
 [workspace]
 members = ["strace-open-parser"]
+
+[dev-dependencies]
+insta = "1.47.2"
