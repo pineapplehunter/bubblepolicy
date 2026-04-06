@@ -38,6 +38,7 @@
               rustPlatform.bindgenHook
               strace
               bubblewrap
+              cargo-insta
               # Rust toolchain with rust-src (for procedural macros) and rust-analyzer
               (rust-bin.stable.latest.default.override {
                 extensions = [
