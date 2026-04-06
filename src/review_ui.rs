@@ -10,14 +10,17 @@ use ratatui::{
     },
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    text::Text,
+    widgets::{Block, Borders, Paragraph},
 };
+use std::collections::HashMap;
 use std::fs;
 use std::io;
 
 use crate::common::{entries_to_string, parse_entries, Access, PolicyEntry};
+use crate::tree_widget::{Tree, TreeItem, TreeState};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AllowState {
     Deny,
     RO,
@@ -26,297 +29,187 @@ enum AllowState {
     Partial,
 }
 
-#[derive(Debug, Clone)]
-struct TreeNode {
-    path: String,
-    display_name: String,
-    allow_state: AllowState,
-    expanded: bool,
-    level: usize,
-    children: Vec<TreeNode>,
-}
-
-struct App {
-    root: TreeNode,
-    path: Vec<usize>,
+pub struct App {
+    items: Vec<TreeItem<'static, String>>,
+    state: TreeState<String>,
+    allow_states: HashMap<String, AllowState>,
     dirty: bool,
     filename: String,
+    show_debug: bool,
 }
 
 impl App {
-    fn from_entries(entries: Vec<PolicyEntry>, filename: String) -> Self {
-        let mut root = TreeNode {
-            path: "/".to_string(),
-            display_name: "/".to_string(),
-            allow_state: AllowState::Partial,
-            expanded: true,
-            level: 0,
-            children: Vec::new(),
-        };
+    pub fn from_entries(entries: Vec<PolicyEntry>, filename: String) -> Self {
+        let mut allow_states = HashMap::new();
+
+        let mut path_map: HashMap<String, (AllowState, Vec<String>)> = HashMap::new();
 
         for entry in entries {
-            if entry.path == "/" {
-                root.allow_state = match entry.access {
-                    Access::Deny => AllowState::Deny,
-                    Access::ReadOnly => AllowState::RO,
-                    Access::ReadWrite => AllowState::RW,
-                    Access::Tmpfs => AllowState::Tmp,
-                };
-                continue;
-            }
+            let full_path = if entry.path == "/" {
+                "/".to_string()
+            } else {
+                entry.path.clone()
+            };
 
-            let mut current = &mut root;
+            let allow_state = match entry.access {
+                Access::Deny => AllowState::Deny,
+                Access::ReadOnly => AllowState::RO,
+                Access::ReadWrite => AllowState::RW,
+                Access::Tmpfs => AllowState::Tmp,
+            };
+            allow_states.insert(full_path.clone(), allow_state);
+
             let parts: Vec<&str> = entry.path.split('/').filter(|s| !s.is_empty()).collect();
+            let path_parts: Vec<String> = parts.iter().map(|s| s.to_string()).collect();
 
-            for (i, part) in parts.iter().enumerate() {
-                let is_last = i == parts.len() - 1;
-                let child_path = format!("{}{}", current.path.trim_end_matches('/'), part);
-
-                let existing_idx = current.children.iter().position(|c| c.path == child_path);
-
-                if let Some(idx) = existing_idx {
-                    current = &mut current.children[idx];
-                } else {
-                    let new_node = TreeNode {
-                        path: child_path.clone(),
-                        display_name: part.to_string(),
-                        allow_state: if is_last {
-                            match entry.access {
-                                Access::Deny => AllowState::Deny,
-                                Access::ReadOnly => AllowState::RO,
-                                Access::ReadWrite => AllowState::RW,
-                                Access::Tmpfs => AllowState::Tmp,
-                            }
-                        } else {
-                            AllowState::Partial
-                        },
-                        expanded: false,
-                        level: current.level + 1,
-                        children: Vec::new(),
-                    };
-                    current.children.push(new_node);
-                    current = current.children.last_mut().unwrap();
-                }
-            }
+            path_map.insert(full_path, (allow_state, path_parts));
         }
+
+        let root_children = build_tree_from_paths(&path_map, "/");
 
         App {
-            root,
-            path: vec![],
+            items: root_children,
+            state: TreeState::default(),
+            allow_states,
             dirty: false,
             filename,
+            show_debug: false,
         }
-    }
-
-    fn get_node_at_path_mut(&mut self, path: &[usize]) -> Option<&mut TreeNode> {
-        let mut node = &mut self.root;
-        for &idx in path {
-            if idx >= node.children.len() {
-                return None;
-            }
-            node = &mut node.children[idx];
-        }
-        Some(node)
     }
 
     fn set_state(&mut self, state: AllowState) {
-        let path = self.path.clone();
-        if let Some(node) = self.get_node_at_path_mut(&path) {
-            node.allow_state = state;
+        let selected_paths = self.state.selected_cloned();
+        if let Some(path) = selected_paths.last() {
+            let icon = state_icon(state);
+            self.allow_states.insert(path.clone(), state);
             self.dirty = true;
+            update_item_text_in_tree(&mut self.items, path, icon);
         }
     }
 
-    fn move_up(&mut self) {
-        if self.path.is_empty() {
-            return;
-        }
-
-        let current_idx = *self.path.last().unwrap();
-
-        if current_idx > 0 {
-            self.path.pop();
-            self.path.push(current_idx - 1);
-            self.go_to_last_visible_descendant();
-        } else {
-            self.path.pop();
-        }
-    }
-
-    fn go_to_last_visible_descendant(&mut self) {
-        while let Some(node) = self.get_node_at_path(&self.path) {
-            if node.expanded && !node.children.is_empty() {
-                self.path.push(node.children.len() - 1);
-            } else {
-                break;
-            }
-        }
-    }
-
-    fn move_down(&mut self) {
-        if let Some(node) = self.get_node_at_path(&self.path)
-            && node.expanded
-            && !node.children.is_empty()
-        {
-            self.path.push(0);
-            return;
-        }
-
-        loop {
-            if self.path.is_empty() {
-                return;
-            }
-
-            let current_idx = *self.path.last().unwrap();
-            let parent_path_len = self.path.len() - 1;
-
-            let parent_node = if parent_path_len == 0 {
-                Some(&self.root)
-            } else {
-                self.get_node_at_path(&self.path[..parent_path_len])
-            };
-
-            if let Some(parent) = parent_node
-                && current_idx + 1 < parent.children.len()
-            {
-                self.path.pop();
-                self.path.push(current_idx + 1);
-                return;
-            }
-
-            self.path.pop();
-        }
-    }
-
-    fn get_node_at_path(&self, path: &[usize]) -> Option<&TreeNode> {
-        let mut node = &self.root;
-        for &idx in path {
-            if idx >= node.children.len() {
-                return None;
-            }
-            node = &node.children[idx];
-        }
-        Some(node)
-    }
-
-    fn toggle_expanded(&mut self) {
-        let path = self.path.clone();
-        if let Some(node) = self.get_node_at_path_mut(&path) {
-            node.expanded = !node.expanded;
-        }
-    }
-
-    fn get_current_visible_position(&self) -> usize {
-        if self.path.is_empty() {
-            return 0;
-        }
-        let mut pos = 0;
-        self.find_position_recursive(&self.root, &self.path, 0, &mut pos);
-        pos
-    }
-
-    fn find_position_recursive(
-        &self,
-        node: &TreeNode,
-        target_path: &[usize],
-        depth: usize,
-        pos: &mut usize,
-    ) -> bool {
-        if depth == target_path.len() {
-            return true;
-        }
-        let target_idx = target_path[depth];
-        for (i, child) in node.children.iter().enumerate() {
-            if i == target_idx {
-                *pos += 1;
-                return self.find_position_recursive(child, target_path, depth + 1, pos);
-            }
-            *pos += 1;
-            if child.expanded && self.count_visible_descendants(child, pos) {
-                return true;
-            }
-        }
-        false
-    }
-
-    fn count_visible_descendants(&self, node: &TreeNode, pos: &mut usize) -> bool {
-        for child in &node.children {
-            *pos += 1;
-            if child.expanded && self.count_visible_descendants(child, pos) {
-                return true;
-            }
-        }
-        false
-    }
-
-    fn render_tree(&self, max_height: u16) -> Vec<String> {
-        let mut lines = Vec::new();
-        self.render_tree_recursive(&self.root, max_height as usize, &mut lines);
-        lines
-    }
-
-    fn render_tree_recursive(&self, node: &TreeNode, max_height: usize, lines: &mut Vec<String>) {
-        if lines.len() >= max_height {
-            return;
-        }
-
-        let indent = "  ".repeat(node.level);
-        let prefix = if node.children.is_empty() {
-            "  "
-        } else if node.expanded {
-            "▼ "
-        } else {
-            "▶ "
-        };
-
-        let state_icon = match node.allow_state {
-            AllowState::Deny => "✗",
-            AllowState::Partial => "○",
-            AllowState::RO => "◐",
-            AllowState::RW => "●",
-            AllowState::Tmp => "◆",
-        };
-
-        let line = format!(
-            "{}{}{} [{}] {}",
-            indent, prefix, state_icon, node.path, node.display_name
-        );
-
-        lines.push(line);
-
-        if node.expanded {
-            for child in &node.children {
-                self.render_tree_recursive(child, max_height, lines);
-            }
-        }
+    fn get_item_state(&self, identifier: &str) -> AllowState {
+        self.allow_states.get(identifier).copied().unwrap_or(AllowState::Partial)
     }
 
     fn to_entries(&self) -> Vec<PolicyEntry> {
         let mut entries = Vec::new();
-        self.collect_entries(&self.root, &mut entries);
+        self.collect_entries_recursive(&self.items, &mut entries);
         entries
     }
 
-    fn collect_entries(&self, node: &TreeNode, entries: &mut Vec<PolicyEntry>) {
-        let access = match node.allow_state {
-            AllowState::Deny => Access::Deny,
-            AllowState::RO => Access::ReadOnly,
-            AllowState::RW => Access::ReadWrite,
-            AllowState::Tmp => Access::Tmpfs,
-            AllowState::Partial => return,
-        };
-
-        if node.path != "/" {
-            entries.push(PolicyEntry {
-                path: node.path.clone(),
-                access,
-            });
-        }
-
-        for child in &node.children {
-            self.collect_entries(child, entries);
+    fn collect_entries_recursive(&self, items: &[TreeItem<'static, String>], entries: &mut Vec<PolicyEntry>) {
+        for item in items {
+            let path = item.identifier();
+            if let Some(state) = self.allow_states.get(path)
+                && *state != AllowState::Partial
+            {
+                let access = match state {
+                    AllowState::Deny => Access::Deny,
+                    AllowState::RO => Access::ReadOnly,
+                    AllowState::RW => Access::ReadWrite,
+                    AllowState::Tmp => Access::Tmpfs,
+                    AllowState::Partial => continue,
+                };
+                entries.push(PolicyEntry {
+                    path: path.clone(),
+                    access,
+                });
+            }
+            self.collect_entries_recursive(item.children(), entries);
         }
     }
+
+    pub fn select_first(&mut self) {
+        self.state.select_first_item(&self.items);
+    }
+}
+
+fn build_tree_from_paths(path_map: &HashMap<String, (AllowState, Vec<String>)>, parent_path: &str) -> Vec<TreeItem<'static, String>> {
+    let parent_parts: Vec<&str> = if parent_path == "/" {
+        Vec::new()
+    } else {
+        parent_path.split('/').filter(|s| !s.is_empty()).collect()
+    };
+
+    let mut child_names: Vec<String> = path_map
+        .keys()
+        .filter_map(|p| {
+            let parts: Vec<&str> = p.split('/').filter(|s| !s.is_empty()).collect();
+            if parts.is_empty() {
+                return None;
+            }
+            if parent_parts.is_empty() {
+                Some(parts[0].to_string())
+            } else if parts.len() > parent_parts.len() 
+                && parts[..parent_parts.len()].iter().eq(parent_parts.iter()) 
+            {
+                Some(parts[parent_parts.len()].to_string())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    child_names.sort();
+    child_names.dedup();
+
+    let mut result = Vec::new();
+    for child_name in child_names {
+        let child_path = if parent_path == "/" {
+            format!("/{}", child_name)
+        } else {
+            format!("{}/{}", parent_path, child_name)
+        };
+
+        let child_children = build_tree_from_paths(path_map, &child_path);
+
+        let state = path_map
+            .get(&child_path)
+            .map(|(s, _)| *s)
+            .unwrap_or(AllowState::Partial);
+        let icon = state_icon(state);
+        let item_text = format!("{} {}", icon, child_name);
+
+        let item = TreeItem::new(
+            child_path.clone(),
+            item_text,
+            child_children,
+        );
+
+        if let Ok(item) = item {
+            result.push(item);
+        }
+    }
+
+    result.sort_by(|a, b| a.identifier().cmp(b.identifier()));
+    result
+}
+
+fn state_icon(state: AllowState) -> &'static str {
+    match state {
+        AllowState::Deny => "✗",
+        AllowState::Partial => "○",
+        AllowState::RO => "◐",
+        AllowState::RW => "●",
+        AllowState::Tmp => "◆",
+    }
+}
+
+fn update_item_text_in_tree(items: &mut [TreeItem<'static, String>], path: &str, icon: &str) -> bool {
+    for item in items.iter_mut() {
+        let id = item.identifier().clone();
+        if id == path {
+            let name = id.rsplit('/').next().unwrap_or(&id);
+            *item.text_mut() = Text::from(format!("{} {}", icon, name));
+            return true;
+        }
+    }
+    for item in items.iter_mut() {
+        if update_item_text_in_tree(item.children_mut(), path, icon) {
+            return true;
+        }
+    }
+    false
 }
 
 pub fn run(filename: &str) -> Result<()> {
@@ -335,6 +228,11 @@ pub fn run(filename: &str) -> Result<()> {
     execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = ratatui::Terminal::new(backend)?;
+
+    let size = ratatui::layout::Rect::new(0, 0, 80, 24);
+    terminal.resize(size)?;
+
+    terminal.draw(|f| ui(f, &mut app))?;
 
     let res = run_app(&mut terminal, &mut app);
 
@@ -359,6 +257,8 @@ fn run_app<W: io::Write>(
     terminal: &mut ratatui::Terminal<CrosstermBackend<W>>,
     app: &mut App,
 ) -> Result<()> {
+    app.state.select_first_item(&app.items);
+
     loop {
         terminal.draw(|f| ui(f, app))?;
 
@@ -367,20 +267,26 @@ fn run_app<W: io::Write>(
         {
             match key.code {
                 KeyCode::Char('q') => break,
-                KeyCode::Up => app.move_up(),
-                KeyCode::Down => app.move_down(),
                 KeyCode::Char('d') => app.set_state(AllowState::Deny),
+                KeyCode::Char('D') => app.show_debug = !app.show_debug,
                 KeyCode::Char('r') => app.set_state(AllowState::RO),
                 KeyCode::Char('w') => app.set_state(AllowState::RW),
                 KeyCode::Char('t') => app.set_state(AllowState::Tmp),
                 KeyCode::Char('p') => app.set_state(AllowState::Partial),
-                KeyCode::Right | KeyCode::Char('e') => app.toggle_expanded(),
+                KeyCode::Char(' ') => {
+                    app.state.toggle_selected();
+                }
+                KeyCode::Up => {
+                    app.state.key_up();
+                }
+                KeyCode::Down => {
+                    app.state.key_down();
+                }
                 KeyCode::Left => {
-                    if let Some(node) = app.get_node_at_path(&app.path)
-                        && node.expanded
-                    {
-                        app.toggle_expanded();
-                    }
+                    app.state.key_left();
+                }
+                KeyCode::Right => {
+                    app.state.key_right();
                 }
                 _ => {}
             }
@@ -390,39 +296,44 @@ fn run_app<W: io::Write>(
     Ok(())
 }
 
-fn ui(f: &mut ratatui::Frame, app: &App) {
+pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Min(1), Constraint::Length(3)])
+        .constraints([
+            Constraint::Min(1),
+            Constraint::Length(3),
+            Constraint::Length(if app.show_debug { 10 } else { 0 }),
+        ])
         .split(f.area());
 
-    let tree_lines = app.render_tree(chunks[0].height);
-    let current_pos = app.get_current_visible_position();
-    let tree_items: Vec<ListItem> = tree_lines
-        .iter()
-        .enumerate()
-        .map(|(idx, line)| {
-            let style = if idx == current_pos {
-                Style::default()
-                    .bg(Color::DarkGray)
-                    .fg(Color::White)
-                    .add_modifier(Modifier::BOLD)
-            } else {
-                Style::default()
-            };
-            ListItem::new(line.clone()).style(style)
-        })
-        .collect();
+    let selected = app.state.selected();
+    let highlight_symbol = if let Some(path) = selected.first() {
+        state_icon(app.get_item_state(path)).to_string()
+    } else {
+        String::new()
+    };
 
-    let tree_widget = List::new(tree_items).block(
-        Block::default()
-            .title("File Tree (d=✗ Deny r=◐ RO w=● RW t=◆ Tmp p=○ Partial)")
-            .borders(Borders::ALL),
-    );
+    let tree_widget = Tree::new(&app.items)
+        .expect("all item identifiers are unique")
+        .block(
+            Block::default()
+                .title("File Tree (d=✗ Deny r=◐ RO w=● RW t=◆ Tmp p=○ Partial)")
+                .borders(Borders::ALL),
+        )
+        .highlight_style(
+            Style::default()
+                .bg(Color::DarkGray)
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol(&highlight_symbol)
+        .node_closed_symbol("▶ ")
+        .node_open_symbol("▼ ")
+        .node_no_children_symbol("  ");
 
-    f.render_widget(tree_widget, chunks[0]);
+    f.render_stateful_widget(tree_widget, chunks[0], &mut app.state);
 
-    let help_text = "d=✗ Deny r=◐ RO w=● RW t=◆ Tmp p=○ Partial | e=expand | ←→=collapse | ↑↓=navigate | q=quit";
+    let help_text = "d=✗ Deny r=◐ RO w=● RW t=◆ Tmp p=○ Partial | Space=expand | ←→=collapse | ↑↓=navigate | q=quit | D=debug";
     let help_widget = Paragraph::new(help_text)
         .alignment(Alignment::Center)
         .style(Style::default().fg(Color::Gray));
