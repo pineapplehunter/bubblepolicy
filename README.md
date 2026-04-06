@@ -61,7 +61,7 @@ bubblepolicy review-ui trace.json
 ```
 
 Keyboard controls:
-- **Arrow keys**: Navigate the tree
+- **Arrow keys** or **hjkl**: Navigate the tree (h=left, j=down, k=up, l=right)
 - **Space**: Expand/collapse directories
 - **d**: Deny (✗)
 - **r**: ReadOnly (◐)

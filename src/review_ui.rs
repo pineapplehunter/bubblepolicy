@@ -288,6 +288,18 @@ fn run_app<W: io::Write>(
                 KeyCode::Right => {
                     app.state.key_right();
                 }
+                KeyCode::Char('h') => {
+                    app.state.key_left();
+                }
+                KeyCode::Char('j') => {
+                    app.state.key_down();
+                }
+                KeyCode::Char('k') => {
+                    app.state.key_up();
+                }
+                KeyCode::Char('l') => {
+                    app.state.key_right();
+                }
                 _ => {}
             }
         }
@@ -333,7 +345,7 @@ pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
 
     f.render_stateful_widget(tree_widget, chunks[0], &mut app.state);
 
-    let help_text = "d=✗ Deny r=◐ RO w=● RW t=◆ Tmp p=○ Partial | Space=expand | ←→=collapse | ↑↓=navigate | q=quit | D=debug";
+    let help_text = "d=✗ Deny r=◐ RO w=● RW t=◆ Tmp p=○ Partial | Space=expand | hkjl/←→=navigate | q=quit | D=debug";
     let help_widget = Paragraph::new(help_text)
         .alignment(Alignment::Center)
         .style(Style::default().fg(Color::Gray));

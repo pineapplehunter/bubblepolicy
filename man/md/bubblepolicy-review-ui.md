@@ -14,7 +14,7 @@ _FILE_ - Input/output file (required). The file must contain traced paths in the
 
 ## KEYBOARD CONTROLS
 
-- **Arrow keys**: Navigate up/down in the tree
+- **Arrow keys** or **hjkl**: Navigate up/down/left/right in the tree
 - **Space**: Expand or collapse directories
 - **d**: Set to Deny (✗)
 - **r**: Set to ReadOnly (◐)
