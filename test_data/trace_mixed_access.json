@@ -1,9 +1,0 @@
-{
-  "files": [
-    { "path": "/nix/store/abc-lib/lib/file1.so", "read": true, "write": false, "execute": false },
-    { "path": "/nix/store/abc-lib/lib/file2.so", "read": true, "write": false, "execute": false },
-    { "path": "/nix/store/def-bin/bin/ls", "read": true, "write": false, "execute": true },
-    { "path": "/tmp/writable/file.txt", "read": true, "write": true, "execute": false },
-    { "path": "/etc/passwd", "read": true, "write": false, "execute": false }
-  ]
-}

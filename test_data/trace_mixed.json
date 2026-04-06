@@ -1,8 +1,0 @@
-{
-  "files": [
-    { "path": "/nix/store/xxx-lib/lib", "read": true, "write": false, "execute": false },
-    { "path": "/nix/store/xxx-lib/lib/glibc-hwcaps", "read": true, "write": false, "execute": false },
-    { "path": "/nix/store/yyy-man/share/man/man1/cmd.1", "read": true, "write": false, "execute": false },
-    { "path": "/nix/store/yyy-man/share/man/man2/cmd.2", "read": true, "write": false, "execute": false }
-  ]
-}

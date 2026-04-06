@@ -1,6 +1,0 @@
-{
-  "files": [
-    { "path": "/aaa/bbb/file", "read": true, "write": false, "execute": false },
-    { "path": "/aaa/ccc/file", "read": true, "write": true, "execute": false }
-  ]
-}
