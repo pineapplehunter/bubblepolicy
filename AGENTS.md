@@ -6,15 +6,17 @@ A Rust CLI tool for configuring bubblewrap sandboxes with SELinux-style workflow
 
 ```
 src/
-├── main.rs        # CLI entry point with clap
-├── lib.rs         # Library exports
-├── common.rs      # Shared types: Access, PolicyEntry, parsing utilities
-├── trace.rs       # Trace subcommand (uses external strace)
-├── review.rs      # Review subcommand (CLI manipulation)
-├── review_ui.rs   # Review subcommand (TUI file tree toggler)
-├── optimise.rs    # Optimize subcommand (dedup paths)
-├── create.rs      # Create subcommand (bubblewrap wrapper generator)
-└── template.sh    # Shell script template for create output
+├── main.rs            # CLI entry point with clap
+├── lib.rs             # Library exports
+├── common.rs          # Shared types: Access, PolicyEntry, parsing utilities
+├── trace.rs           # Trace subcommand (uses external strace)
+├── review.rs          # Review subcommand (CLI manipulation)
+├── review_ui.rs       # Review subcommand (TUI file tree toggler)
+├── tree_widget/       # Custom ratatui tree widget implementation
+│   └── mod.rs
+├── optimise.rs        # Optimize subcommand (dedup paths)
+├── create.rs          # Create subcommand (bubblewrap wrapper generator)
+└── template.sh        # Shell script template for create output
 ```
 
 ## Data Model

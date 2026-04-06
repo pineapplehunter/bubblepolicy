@@ -60,6 +60,17 @@ Review traced paths in a TUI file tree and toggle allow/deny:
 bubblepolicy review-ui trace.json
 ```
 
+Keyboard controls:
+- **Arrow keys**: Navigate the tree
+- **Space**: Expand/collapse directories
+- **d**: Deny (✗)
+- **r**: ReadOnly (◐)
+- **w**: ReadWrite (●)
+- **t**: Tmpfs (◆)
+- **p**: Partial/Mixed (○)
+- **D**: Toggle debug view
+- **q**: Quit
+
 This will update the contents of `trace.json`.
 
 ### review

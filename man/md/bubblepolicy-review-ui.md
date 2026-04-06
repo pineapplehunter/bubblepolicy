@@ -12,9 +12,17 @@ Review traced paths in a terminal user interface and toggle allow/deny permissio
 
 _FILE_ - Input/output file (required). The file must contain traced paths in the policy format.
 
-## INTERACTION
+## KEYBOARD CONTROLS
 
-Use arrow keys to navigate the file tree. Press Space to toggle access mode (ReadOnly, ReadWrite, Tmpfs, Deny).
+- **Arrow keys**: Navigate up/down in the tree
+- **Space**: Expand or collapse directories
+- **d**: Set to Deny (✗)
+- **r**: Set to ReadOnly (◐)
+- **w**: Set to ReadWrite (●)
+- **t**: Set to Tmpfs (◆)
+- **p**: Set to Partial/Mixed (○)
+- **D**: Toggle debug view
+- **q**: Quit and save
 
 ## EXAMPLE
 
